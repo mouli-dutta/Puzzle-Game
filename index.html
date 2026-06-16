@@ -135,6 +135,18 @@
             box-shadow: 0 0 30px rgba(99, 102, 241, 0.8);
         }
         
+        
+/* Mobile controls position */
+#mobile-controls {
+    position: absolute !important;
+    right: 10px !important;
+    bottom: 10px !important;
+    left: auto !important;
+    top: auto !important;
+    transform: none !important;
+}
+
+
         /* Mobile Portrait (320px - 767px) */
         @media (max-width: 767px) {
             body {
@@ -243,8 +255,11 @@
             
             /* Mobile controls - ensure bottom arrow is visible */
             #mobile-controls {
-                bottom: max(1rem, env(safe-area-inset-bottom, 1rem)) !important;
-                transform: translate(-50%, 0) scale(0.65) !important;
+                right: 10px !important;
+                bottom: max(10px, env(safe-area-inset-bottom, 10px)) !important;
+                left: auto !important;
+                transform: scale(0.65) !important;
+                transform-origin: bottom right !important;
             }
             
             #mobile-controls .relative {
@@ -451,8 +466,11 @@
             }
             
             #mobile-controls {
-                transform: translate(-50%, 0) scale(0.55) !important;
-                bottom: 0.25rem !important;
+                right: 10px !important;
+                bottom: 10px !important;
+                left: auto !important;
+                transform: scale(0.55) !important;
+                transform-origin: bottom right !important;
             }
             
             .absolute.top-0.left-0.right-0.p-6 {
@@ -614,7 +632,7 @@
         </div>
         
         <!-- Mobile Touch Controls -->
-        <div id="mobile-controls" class="absolute bottom-6 left-1/2 transform -translate-x-1/2 pointer-events-auto lg:hidden">
+        <div id="mobile-controls" class="absolute pointer-events-auto lg:hidden">
             <div class="relative w-48 h-48">
                 <!-- Up Button -->
                 <button onclick="moveWithButton('UP')" class="direction-btn absolute top-0 left-1/2 transform -translate-x-1/2 glass glow w-16 h-16 rounded-lg text-white text-3xl font-bold hover:bg-white/20 active:scale-95 transition-all flex items-center justify-center">
