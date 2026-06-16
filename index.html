@@ -169,39 +169,50 @@
             
             /* Game HUD */
             .absolute.top-0.left-0.right-0.p-6 {
-                padding: 1rem !important;
-                flex-direction: column;
-                gap: 0.5rem;
+                padding: 0.5rem !important;
+                flex-direction: row !important;
+                gap: 0.5rem !important;
+                align-items: flex-start !important;
             }
             
             .glass.glow.p-4 {
                 padding: 0.5rem !important;
-                font-size: 0.75rem;
+                font-size: 0.7rem;
+            }
+            
+            #level-number {
+                font-size: 0.65rem !important;
             }
             
             #level-name {
-                font-size: 1rem !important;
+                font-size: 0.85rem !important;
+            }
+            
+            .text-sm {
+                font-size: 0.65rem !important;
             }
             
             /* Top right buttons */
             .flex.gap-3 {
-                gap: 0.5rem !important;
+                gap: 0.25rem !important;
             }
             
             .flex.gap-3 button {
-                padding: 0.5rem !important;
-                font-size: 1.25rem;
-                min-width: 2.5rem;
+                padding: 0.4rem !important;
+                font-size: 1.1rem;
+                min-width: 2.2rem;
+                width: 2.2rem;
+                height: 2.2rem;
             }
             
             /* Mobile controls */
             #mobile-controls {
-                bottom: 1rem !important;
-                transform: translate(-50%, 0) scale(0.85) !important;
+                bottom: 0.5rem !important;
+                transform: translate(-50%, 0) scale(0.65) !important;
             }
             
             #hint-display {
-                bottom: 12rem !important;
+                bottom: 8rem !important;
                 left: 1rem !important;
                 right: 1rem !important;
             }
@@ -297,12 +308,27 @@
             }
             
             #mobile-controls {
-                transform: translate(-50%, 0) scale(0.7) !important;
-                bottom: 0.5rem !important;
+                transform: translate(-50%, 0) scale(0.55) !important;
+                bottom: 0.25rem !important;
             }
             
             .absolute.top-0.left-0.right-0.p-6 {
-                padding: 0.5rem !important;
+                padding: 0.25rem !important;
+            }
+            
+            .glass.glow.p-4 {
+                padding: 0.35rem !important;
+            }
+            
+            .flex.gap-3 button {
+                padding: 0.3rem !important;
+                font-size: 1rem !important;
+                width: 2rem !important;
+                height: 2rem !important;
+            }
+            
+            #hint-display {
+                bottom: 6rem !important;
             }
         }
         
@@ -400,6 +426,12 @@
                 </div>
             </div>
             <div class="flex gap-3 pointer-events-auto">
+                <button onclick="zoomIn()" class="glass glow px-4 py-2 rounded-lg text-white hover:bg-white/10 transition-all" title="Zoom In (+)">
+                    🔍+
+                </button>
+                <button onclick="zoomOut()" class="glass glow px-4 py-2 rounded-lg text-white hover:bg-white/10 transition-all" title="Zoom Out (-)">
+                    🔍−
+                </button>
                 <button onclick="getHint()" id="hint-btn" class="glass glow px-4 py-2 rounded-lg text-white hover:bg-white/10 transition-all" title="Get Hint (1 Coin)">
                     💡
                 </button>
@@ -730,11 +762,14 @@
             
             // Controls - Limited rotation for top-down view
             controls = new OrbitControls(camera, renderer.domElement);
-            controls.enableZoom = false;
+            controls.enableZoom = true;
             controls.enablePan = false;
             controls.minPolarAngle = Math.PI / 6;
             controls.maxPolarAngle = Math.PI / 3;
             controls.target.set(0, 0, 0);
+            controls.minDistance = 10;  // Minimum zoom distance
+            controls.maxDistance = 40;  // Maximum zoom distance
+            controls.zoomSpeed = 1.0;
             
             // Lights
             const ambientLight = new THREE.AmbientLight(0xffffff, 0.3);
@@ -2070,6 +2105,16 @@
                         e.preventDefault();
                         deselectTile();
                         break;
+                    case 'Equal':
+                    case 'NumpadAdd':
+                        e.preventDefault();
+                        zoomIn();
+                        break;
+                    case 'Minus':
+                    case 'NumpadSubtract':
+                        e.preventDefault();
+                        zoomOut();
+                        break;
                 }
             }
         }, true); // Use capture to override previous listener
@@ -2077,6 +2122,37 @@
         // ============================================
         // MOBILE TOUCH CONTROLS
         // ============================================
+        
+        // Zoom functions
+        window.zoomIn = function() {
+            if (!controls) return;
+            
+            const currentDistance = camera.position.distanceTo(controls.target);
+            const newDistance = Math.max(controls.minDistance, currentDistance - 3);
+            
+            // Calculate new camera position
+            const direction = new THREE.Vector3();
+            direction.subVectors(camera.position, controls.target).normalize();
+            camera.position.copy(controls.target).add(direction.multiplyScalar(newDistance));
+            
+            controls.update();
+            playSound('select');
+        };
+        
+        window.zoomOut = function() {
+            if (!controls) return;
+            
+            const currentDistance = camera.position.distanceTo(controls.target);
+            const newDistance = Math.min(controls.maxDistance, currentDistance + 3);
+            
+            // Calculate new camera position
+            const direction = new THREE.Vector3();
+            direction.subVectors(camera.position, controls.target).normalize();
+            camera.position.copy(controls.target).add(direction.multiplyScalar(newDistance));
+            
+            controls.update();
+            playSound('select');
+        };
         
         // Function for on-screen button controls
         window.moveWithButton = function(directionName) {
@@ -2113,102 +2189,8 @@
             }
         };
         
-        // Swipe gesture detection
-        let touchStartX = 0;
-        let touchStartY = 0;
-        let touchStartTime = 0;
-        let isSwiping = false;
-        
-        function handleTouchStart(e) {
-            if (!document.getElementById('game-screen').classList.contains('active')) {
-                return;
-            }
-            
-            // Only handle single touch
-            if (e.touches.length !== 1) return;
-            
-            const touch = e.touches[0];
-            touchStartX = touch.clientX;
-            touchStartY = touch.clientY;
-            touchStartTime = Date.now();
-            isSwiping = true;
-        }
-        
-        function handleTouchMove(e) {
-            if (!isSwiping) return;
-            
-            // Prevent default to avoid scrolling
-            if (e.touches.length === 1) {
-                const touch = e.touches[0];
-                const deltaX = Math.abs(touch.clientX - touchStartX);
-                const deltaY = Math.abs(touch.clientY - touchStartY);
-                
-                // If significant movement, prevent default
-                if (deltaX > 10 || deltaY > 10) {
-                    e.preventDefault();
-                }
-            }
-        }
-        
-        function handleTouchEnd(e) {
-            if (!isSwiping) return;
-            if (!document.getElementById('game-screen').classList.contains('active')) {
-                isSwiping = false;
-                return;
-            }
-            
-            const touch = e.changedTouches[0];
-            const touchEndX = touch.clientX;
-            const touchEndY = touch.clientY;
-            const touchEndTime = Date.now();
-            
-            const deltaX = touchEndX - touchStartX;
-            const deltaY = touchEndY - touchStartY;
-            const deltaTime = touchEndTime - touchStartTime;
-            const distance = Math.sqrt(deltaX * deltaX + deltaY * deltaY);
-            
-            isSwiping = false;
-            
-            // Check if it's a valid swipe (min distance 50px, max time 500ms)
-            if (distance > 50 && deltaTime < 500) {
-                // Prevent the click event from firing for swipes
-                e.preventDefault();
-                
-                let direction = null;
-                
-                // Determine swipe direction
-                if (Math.abs(deltaX) > Math.abs(deltaY)) {
-                    // Horizontal swipe
-                    if (deltaX > 0) {
-                        direction = DIRECTIONS.RIGHT;
-                    } else {
-                        direction = DIRECTIONS.LEFT;
-                    }
-                } else {
-                    // Vertical swipe
-                    if (deltaY > 0) {
-                        direction = DIRECTIONS.DOWN;
-                    } else {
-                        direction = DIRECTIONS.UP;
-                    }
-                }
-                
-                if (direction) {
-                    // Convert to camera-relative direction
-                    const worldDirection = getCameraRelativeDirection(direction);
-                    
-                    if (gameState.selectedTile) {
-                        moveSelectedTile(worldDirection);
-                    } else {
-                        // Default to moving astronaut if nothing selected
-                        moveAstronaut(worldDirection);
-                    }
-                }
-            } else if (distance < 10 && deltaTime < 300) {
-                // It's a tap, not a swipe - let the click handler deal with it
-                handleTileClick(touch);
-            }
-        }
+        // Swipe gestures disabled - using only on-screen arrow buttons for mobile
+        // This prevents accidental movements and conflicts with camera rotation
         
         // ============================================
         // ANIMATION LOOP
@@ -2359,10 +2341,13 @@
             if (renderer && renderer.domElement) {
                 renderer.domElement.addEventListener('click', handleTileClick, false);
                 
-                // Add swipe gesture listeners for mobile controls
-                renderer.domElement.addEventListener('touchstart', handleTouchStart, { passive: false });
-                renderer.domElement.addEventListener('touchmove', handleTouchMove, { passive: false });
-                renderer.domElement.addEventListener('touchend', handleTouchEnd, { passive: false });
+                // Add touch listener for tile selection on mobile
+                renderer.domElement.addEventListener('touchend', (e) => {
+                    if (e.changedTouches.length > 0) {
+                        const touch = e.changedTouches[0];
+                        handleTileClick(touch);
+                    }
+                }, { passive: true });
             }
         });
         
