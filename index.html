@@ -2,7 +2,9 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <meta name="mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-capable" content="yes">
     <title>Space Puzzle - Astronaut's Journey</title>
     
     <!-- Favicon -->
@@ -41,19 +43,43 @@
             box-sizing: border-box;
         }
         
+        html {
+            overflow: hidden;
+            height: 100%;
+            width: 100%;
+            position: fixed;
+        }
+        
         body {
             font-family: 'Orbitron', sans-serif;
             background: #0a0e27;
             color: white;
             overflow: hidden;
+            height: 100%;
+            width: 100%;
+            position: fixed;
+            overscroll-behavior: none;
+            -webkit-overflow-scrolling: touch;
+            touch-action: pan-x pan-y;
         }
         
         #canvas-container {
             width: 100vw;
             height: 100vh;
+            height: 100dvh; /* Dynamic viewport height for mobile */
             position: fixed;
             top: 0;
             left: 0;
+        }
+        
+        /* Safe area support for notched devices */
+        @supports (padding: max(0px)) {
+            .screen {
+                padding-left: max(0px, env(safe-area-inset-left));
+                padding-right: max(0px, env(safe-area-inset-right));
+                padding-top: max(0px, env(safe-area-inset-top));
+                padding-bottom: max(0px, env(safe-area-inset-bottom));
+            }
         }
         
         .glass {
@@ -109,25 +135,142 @@
             box-shadow: 0 0 30px rgba(99, 102, 241, 0.8);
         }
         
-        /* Responsive adjustments for mobile */
+        /* Mobile Portrait (320px - 767px) */
         @media (max-width: 767px) {
+            body {
+                font-size: 14px;
+            }
+            
+            /* Main Menu */
+            #menu-screen h1 {
+                font-size: 2.5rem !important;
+                margin-bottom: 0.5rem !important;
+            }
+            
+            #menu-screen p {
+                font-size: 1rem !important;
+            }
+            
+            #menu-screen .mb-12 {
+                margin-bottom: 2rem !important;
+            }
+            
+            #menu-screen button {
+                padding: 0.75rem 2rem !important;
+                font-size: 1rem !important;
+            }
+            
+            /* Instructions panel */
+            .absolute.top-6.left-6 {
+                top: 1rem !important;
+                left: 1rem !important;
+                max-width: calc(100vw - 2rem) !important;
+            }
+            
+            /* Game HUD */
+            .absolute.top-0.left-0.right-0.p-6 {
+                padding: 1rem !important;
+                flex-direction: column;
+                gap: 0.5rem;
+            }
+            
             .glass.glow.p-4 {
-                padding: 0.75rem;
+                padding: 0.5rem !important;
+                font-size: 0.75rem;
+            }
+            
+            #level-name {
+                font-size: 1rem !important;
+            }
+            
+            /* Top right buttons */
+            .flex.gap-3 {
+                gap: 0.5rem !important;
+            }
+            
+            .flex.gap-3 button {
+                padding: 0.5rem !important;
+                font-size: 1.25rem;
+                min-width: 2.5rem;
+            }
+            
+            /* Mobile controls */
+            #mobile-controls {
+                bottom: 1rem !important;
+                transform: translate(-50%, 0) scale(0.85) !important;
+            }
+            
+            #hint-display {
+                bottom: 12rem !important;
+                left: 1rem !important;
+                right: 1rem !important;
+            }
+            
+            #hint-display .glass {
+                padding: 0.75rem !important;
+            }
+            
+            /* Win screen */
+            #win-screen .glass {
+                padding: 2rem !important;
+                margin: 1rem !important;
+            }
+            
+            #win-screen h2 {
+                font-size: 2rem !important;
+            }
+            
+            #win-screen .text-6xl {
+                font-size: 3rem !important;
+            }
+            
+            /* Level select */
+            #level-select-screen .glass {
+                padding: 1.5rem !important;
+                margin: 1rem !important;
+                max-height: calc(100vh - 2rem) !important;
+            }
+            
+            #level-select-screen h2 {
+                font-size: 1.5rem !important;
+            }
+            
+            .grid.grid-cols-5 {
+                grid-template-columns: repeat(3, minmax(0, 1fr)) !important;
+                gap: 0.5rem !important;
+            }
+            
+            .level-btn {
+                width: 3rem !important;
+                height: 3rem !important;
+                font-size: 0.875rem !important;
+            }
+        }
+        
+        /* Tablet Portrait (768px - 1023px) */
+        @media (min-width: 768px) and (max-width: 1023px) {
+            #menu-screen h1 {
+                font-size: 4rem !important;
+            }
+            
+            #menu-screen p {
+                font-size: 1.5rem !important;
+            }
+            
+            #mobile-controls {
+                bottom: 2rem !important;
             }
             
             #hint-display {
                 bottom: 14rem !important;
             }
-        }
-        
-        /* Tablet landscape */
-        @media (min-width: 768px) and (max-width: 1023px) {
-            #mobile-controls {
-                bottom: 2rem;
+            
+            .grid.grid-cols-5 {
+                grid-template-columns: repeat(4, minmax(0, 1fr)) !important;
             }
         }
         
-        /* Desktop - hide mobile controls */
+        /* Desktop (1024px+) */
         @media (min-width: 1024px) {
             #mobile-controls {
                 display: none !important;
@@ -135,6 +278,31 @@
             
             #hint-display {
                 bottom: 1.5rem !important;
+            }
+        }
+        
+        /* Landscape orientation adjustments */
+        @media (max-height: 600px) and (orientation: landscape) {
+            #menu-screen h1 {
+                font-size: 2rem !important;
+                margin-bottom: 0.5rem !important;
+            }
+            
+            #menu-screen .mb-12 {
+                margin-bottom: 1rem !important;
+            }
+            
+            #menu-screen button {
+                padding: 0.5rem 1.5rem !important;
+            }
+            
+            #mobile-controls {
+                transform: translate(-50%, 0) scale(0.7) !important;
+                bottom: 0.5rem !important;
+            }
+            
+            .absolute.top-0.left-0.right-0.p-6 {
+                padding: 0.5rem !important;
             }
         }
         
