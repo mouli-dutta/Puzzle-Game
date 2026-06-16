@@ -168,25 +168,13 @@
             }
             
             /* Game HUD */
-            .absolute.top-0.left-0.right-0.p-6 {
+            .absolute.top-0.left-0.right-0 {
                 padding: 0.5rem !important;
-                flex-direction: column !important;
-                gap: 0.5rem !important;
-                align-items: stretch !important;
             }
             
-            .glass.glow.p-3,
-            .glass.glow.p-4 {
+            .glass.glow.p-3 {
                 padding: 0.5rem !important;
                 font-size: 0.7rem;
-            }
-            
-            #level-info-details {
-                font-size: 0.7rem !important;
-            }
-            
-            #level-name-short {
-                font-size: 0.75rem !important;
             }
             
             #level-number {
@@ -194,56 +182,49 @@
             }
             
             #level-name {
-                font-size: 0.8rem !important;
+                font-size: 0.9rem !important;
+            }
+            
+            .text-xs {
+                font-size: 0.6rem !important;
             }
             
             .text-sm {
                 font-size: 0.65rem !important;
             }
             
-            /* HUD sections on mobile */
-            .absolute.top-0 > div {
-                width: 100% !important;
-                max-width: 100% !important;
-            }
-            
-            .absolute.top-0 .flex.gap-2,
-            .absolute.top-0 .flex.gap-3 {
-                justify-content: space-between !important;
-                width: 100% !important;
-            }
-            
-            /* Top right buttons */
-            .flex.gap-3 {
+            /* Control buttons row */
+            .flex.justify-between.items-center {
                 gap: 0.25rem !important;
             }
             
-            .flex.gap-3 button {
-                padding: 0.4rem !important;
-                font-size: 1.1rem;
-                min-width: 2.2rem;
-                width: 2.2rem;
-                height: 2.2rem;
+            .flex.justify-between button,
+            .flex.justify-between > div {
+                padding: 0.4rem 0.6rem !important;
+                font-size: 0.9rem !important;
+                flex: 1;
+                min-width: auto !important;
             }
             
-            /* Mobile controls */
+            /* Mobile controls - ensure bottom arrow is visible */
             #mobile-controls {
-                bottom: 1.5rem !important;
-                transform: translate(-50%, 0) scale(0.7) !important;
+                bottom: max(1rem, env(safe-area-inset-bottom, 1rem)) !important;
+                transform: translate(-50%, 0) scale(0.65) !important;
             }
             
             #mobile-controls .relative {
-                width: 11rem !important;
-                height: 11rem !important;
+                width: 10rem !important;
+                height: 10rem !important;
             }
             
             #mobile-controls .direction-btn {
-                width: 3.5rem !important;
-                height: 3.5rem !important;
+                width: 3rem !important;
+                height: 3rem !important;
+                font-size: 1.5rem !important;
             }
             
             #hint-display {
-                bottom: 8rem !important;
+                bottom: 7.5rem !important;
                 left: 1rem !important;
                 right: 1rem !important;
             }
@@ -462,39 +443,40 @@
     <!-- Game Screen -->
     <div id="game-screen" class="screen">
         <!-- HUD -->
-        <div class="absolute top-0 left-0 right-0 p-6 flex justify-between items-start pointer-events-none">
-            <!-- Left Side: Coins and Hint -->
-            <div class="flex gap-2 pointer-events-auto">
-                <div class="glass glow px-3 py-2 rounded-lg">
-                    <div class="text-yellow-400 font-bold">🪙 <span id="coin-count">0</span></div>
-                </div>
-                <button onclick="getHint()" id="hint-btn" class="glass glow px-4 py-2 rounded-lg text-white hover:bg-white/10 transition-all" title="Get Hint (1 Coin)">
-                    💡
-                </button>
-            </div>
-            
-            <!-- Center: Level Info (Collapsible) -->
-            <div class="glass glow p-3 rounded-lg pointer-events-auto max-w-xs">
-                <button onclick="toggleLevelInfo()" class="flex items-center gap-2 text-white w-full">
-                    <span class="text-sm font-bold" id="level-name-short">Level 1</span>
-                    <span id="level-info-arrow" class="text-xs">▼</span>
-                </button>
-                <div id="level-info-details" class="text-white text-sm mt-2">
+        <div class="absolute top-0 left-0 right-0 p-4 pointer-events-none">
+            <!-- Row 1: Level Description -->
+            <div class="glass glow p-3 rounded-lg pointer-events-auto mb-3 text-center">
+                <div class="text-white">
                     <div class="text-xs text-gray-300" id="level-number">Level 1</div>
-                    <div class="text-base font-bold" id="level-name">First Steps</div>
+                    <div class="text-lg font-bold" id="level-name">First Steps</div>
                     <div class="text-xs text-gray-400 mt-1">Moves: <span id="move-count">0</span></div>
                 </div>
             </div>
             
-            <!-- Right Side: Action Buttons -->
-            <div class="flex gap-3 pointer-events-auto">
-                <button onclick="undoMove()" class="glass glow px-4 py-2 rounded-lg text-white hover:bg-white/10 transition-all" title="Undo (U/Z)">
+            <!-- Row 2: Controls -->
+            <div class="flex justify-between items-center gap-2 pointer-events-auto flex-wrap">
+                <!-- Coins -->
+                <div class="glass glow px-3 py-2 rounded-lg">
+                    <div class="text-yellow-400 font-bold text-sm">🪙 <span id="coin-count">0</span></div>
+                </div>
+                
+                <!-- Hint -->
+                <button onclick="getHint()" id="hint-btn" class="glass glow px-3 py-2 rounded-lg text-white hover:bg-white/10 transition-all" title="Get Hint (1 Coin)">
+                    💡
+                </button>
+                
+                <!-- Undo -->
+                <button onclick="undoMove()" class="glass glow px-3 py-2 rounded-lg text-white hover:bg-white/10 transition-all" title="Undo (U/Z)">
                     ↶
                 </button>
-                <button onclick="resetLevel()" class="glass glow px-4 py-2 rounded-lg text-white hover:bg-white/10 transition-all" title="Reset (R)">
+                
+                <!-- Reset -->
+                <button onclick="resetLevel()" class="glass glow px-3 py-2 rounded-lg text-white hover:bg-white/10 transition-all" title="Reset (R)">
                     ⟳
                 </button>
-                <button onclick="showLevelSelect()" class="glass glow px-4 py-2 rounded-lg text-white hover:bg-white/10 transition-all" title="Level Select">
+                
+                <!-- Level Select -->
+                <button onclick="showLevelSelect()" class="glass glow px-3 py-2 rounded-lg text-white hover:bg-white/10 transition-all" title="Level Select">
                     📋
                 </button>
             </div>
@@ -1003,6 +985,11 @@
             camera.updateProjectionMatrix();
             renderer.setSize(window.innerWidth, window.innerHeight);
             composer.setSize(window.innerWidth, window.innerHeight);
+            
+            // Re-adjust camera zoom if in game
+            if (document.getElementById('game-screen').classList.contains('active')) {
+                adjustCameraForDevice();
+            }
         }
         
         // ============================================
@@ -1842,6 +1829,67 @@
             clearBoard();
             createBoard();
             showGame();
+            
+            // Auto-adjust camera zoom based on device and board size
+            setTimeout(() => {
+                adjustCameraForDevice();
+            }, 100);
+        }
+        
+        // Auto-adjust camera zoom based on device size and board size
+        function adjustCameraForDevice() {
+            if (!camera || !controls) return;
+            
+            const level = LEVELS[gameState.currentLevel];
+            const boardSize = level.size;
+            const isMobile = window.innerWidth < 768;
+            const isTablet = window.innerWidth >= 768 && window.innerWidth < 1024;
+            const viewportHeight = window.innerHeight;
+            
+            // Calculate optimal distance based on board size and device
+            let optimalDistance;
+            
+            if (isMobile) {
+                // Mobile: closer zoom, account for controls
+                const hasControls = viewportHeight < 700; // Smaller screens need more zoom out
+                if (boardSize <= 4) {
+                    optimalDistance = hasControls ? 18 : 16;
+                } else if (boardSize <= 5) {
+                    optimalDistance = hasControls ? 22 : 20;
+                } else if (boardSize <= 6) {
+                    optimalDistance = hasControls ? 26 : 24;
+                } else {
+                    optimalDistance = hasControls ? 32 : 28;
+                }
+            } else if (isTablet) {
+                // Tablet: medium zoom
+                if (boardSize <= 4) {
+                    optimalDistance = 16;
+                } else if (boardSize <= 5) {
+                    optimalDistance = 20;
+                } else if (boardSize <= 6) {
+                    optimalDistance = 24;
+                } else {
+                    optimalDistance = 28;
+                }
+            } else {
+                // Desktop: standard zoom
+                if (boardSize <= 4) {
+                    optimalDistance = 15;
+                } else if (boardSize <= 5) {
+                    optimalDistance = 18;
+                } else if (boardSize <= 6) {
+                    optimalDistance = 22;
+                } else {
+                    optimalDistance = 26;
+                }
+            }
+            
+            // Apply the zoom
+            const direction = new THREE.Vector3();
+            direction.subVectors(camera.position, controls.target).normalize();
+            camera.position.copy(controls.target).add(direction.multiplyScalar(optimalDistance));
+            controls.update();
         }
         
         function clearBoard() {
