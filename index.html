@@ -136,14 +136,17 @@
         }
         
         
-/* Mobile controls position */
 #mobile-controls {
-    position: absolute !important;
-    right: 10px !important;
-    bottom: 10px !important;
-    left: auto !important;
-    top: auto !important;
-    transform: none !important;
+    position: fixed !important;
+    right: 10px;
+    bottom: 10px;
+    z-index: 9999;
+    touch-action: none;
+    cursor: grab;
+}
+
+#mobile-controls.dragging {
+    cursor: grabbing;
 }
 
 
@@ -632,7 +635,7 @@
         </div>
         
         <!-- Mobile Touch Controls -->
-        <div id="mobile-controls" class="absolute pointer-events-auto lg:hidden">
+        <div id="mobile-controls" class="pointer-events-auto lg:hidden">
             <div class="relative w-48 h-48">
                 <!-- Up Button -->
                 <button onclick="moveWithButton('UP')" class="direction-btn absolute top-0 left-1/2 transform -translate-x-1/2 glass glow w-16 h-16 rounded-lg text-white text-3xl font-bold hover:bg-white/20 active:scale-95 transition-all flex items-center justify-center">
@@ -2808,5 +2811,73 @@
         
         // Auto-test disabled in production
     </script>
+
+<script>
+document.addEventListener('DOMContentLoaded', () => {
+    const controls = document.getElementById('mobile-controls');
+    if (!controls) return;
+
+    const savedX = localStorage.getItem('controlsX');
+    const savedY = localStorage.getItem('controlsY');
+
+    if (savedX && savedY) {
+        controls.style.left = savedX + 'px';
+        controls.style.top = savedY + 'px';
+        controls.style.right = 'auto';
+        controls.style.bottom = 'auto';
+    }
+
+    let dragging = false;
+    let startX = 0;
+    let startY = 0;
+    let offsetX = 0;
+    let offsetY = 0;
+
+    controls.addEventListener('touchstart', (e) => {
+        if (e.target.classList.contains('direction-btn')) return;
+
+        dragging = true;
+
+        const touch = e.touches[0];
+        const rect = controls.getBoundingClientRect();
+
+        startX = touch.clientX;
+        startY = touch.clientY;
+
+        offsetX = rect.left;
+        offsetY = rect.top;
+    }, { passive: true });
+
+    document.addEventListener('touchmove', (e) => {
+        if (!dragging) return;
+
+        const touch = e.touches[0];
+
+        let newX = offsetX + (touch.clientX - startX);
+        let newY = offsetY + (touch.clientY - startY);
+
+        const maxX = window.innerWidth - controls.offsetWidth;
+        const maxY = window.innerHeight - controls.offsetHeight;
+
+        newX = Math.max(0, Math.min(newX, maxX));
+        newY = Math.max(0, Math.min(newY, maxY));
+
+        controls.style.left = newX + 'px';
+        controls.style.top = newY + 'px';
+        controls.style.right = 'auto';
+        controls.style.bottom = 'auto';
+    }, { passive: true });
+
+    document.addEventListener('touchend', () => {
+        if (!dragging) return;
+
+        dragging = false;
+
+        localStorage.setItem('controlsX', parseInt(controls.style.left || 0));
+        localStorage.setItem('controlsY', parseInt(controls.style.top || 0));
+    });
+});
+</script>
+
 </body>
 </html>
