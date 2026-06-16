@@ -1,0 +1,2190 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Space Puzzle - Astronaut's Journey</title>
+    
+    <!-- Favicon -->
+    <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>👨‍🚀</text></svg>">
+    
+    <!-- Google Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;500;700;900&display=swap" rel="stylesheet">
+    
+    <!-- TailwindCSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        space: {
+                            dark: '#0a0e27',
+                            blue: '#1a1f3a',
+                            purple: '#2d1b4e',
+                        }
+                    },
+                    fontFamily: {
+                        'space': ['"Orbitron"', 'sans-serif'],
+                    }
+                }
+            }
+        }
+    </script>
+    
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: 'Orbitron', sans-serif;
+            background: #0a0e27;
+            color: white;
+            overflow: hidden;
+        }
+        
+        #canvas-container {
+            width: 100vw;
+            height: 100vh;
+            position: fixed;
+            top: 0;
+            left: 0;
+        }
+        
+        .glass {
+            background: rgba(255, 255, 255, 0.05);
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+        }
+        
+        .glow {
+            box-shadow: 0 0 20px rgba(99, 102, 241, 0.5);
+        }
+        
+        .text-glow {
+            text-shadow: 0 0 10px rgba(99, 102, 241, 0.8);
+        }
+        
+        .screen {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100vw;
+            height: 100vh;
+            z-index: 10;
+            pointer-events: none;
+        }
+        
+        .screen > * {
+            pointer-events: auto;
+        }
+        
+        .screen.active {
+            display: flex;
+        }
+        
+        @keyframes bounce {
+            0%, 100% { transform: translateY(0); }
+            50% { transform: translateY(-10px); }
+        }
+        
+        .animate-bounce {
+            animation: bounce 0.5s ease-in-out;
+        }
+    </style>
+</head>
+<body>
+    <!-- Canvas Container -->
+    <div id="canvas-container"></div>
+    
+    <!-- Main Menu Screen -->
+    <div id="menu-screen" class="screen active flex-col items-center justify-center">
+        <div class="text-center mb-12">
+            <h1 class="text-7xl font-bold text-white mb-4 text-glow">SPACE PUZZLE</h1>
+            <p class="text-2xl text-blue-300">Astronaut's Journey to Earth</p>
+        </div>
+        <div class="flex flex-col gap-4">
+            <button onclick="showLevelSelect()" class="glass glow px-12 py-4 rounded-lg text-white text-xl font-semibold hover:bg-white/10 transition-all transform hover:scale-105">
+                START GAME
+            </button>
+            <button onclick="toggleMusic()" id="music-toggle" class="glass px-12 py-4 rounded-lg text-white text-lg font-medium hover:bg-white/10 transition-all">
+                🔊 MUSIC ON
+            </button>
+            <button onclick="resetProgress()" class="glass px-12 py-4 rounded-lg text-white text-lg font-medium hover:bg-white/10 transition-all">
+                RESET PROGRESS
+            </button>
+        </div>
+        
+        <!-- Game Instructions (Top-Left Corner, Collapsible) -->
+        <div class="absolute top-6 left-6 max-w-sm pointer-events-auto">
+            <div class="glass glow p-4 rounded-lg">
+                <button onclick="toggleInstructions()" class="flex items-center gap-2 text-white font-semibold w-full hover:text-yellow-300 transition-colors">
+                    <span class="text-xl">📖</span>
+                    <span>INSTRUCTIONS</span>
+                    <span id="instructions-arrow" class="ml-auto transition-transform" style="transform: rotate(-90deg);">▶</span>
+                </button>
+                <div id="instructions-content" class="text-white text-sm space-y-3 mt-3 max-h-96 overflow-y-auto pr-2" style="display: none;">
+                    <div>
+                        <div class="font-bold text-yellow-300 mb-1">🎯 Objective:</div>
+                        <div class="text-gray-300">Move the <span class="text-orange-400">👨‍🚀 Astronaut</span> to the <span class="text-blue-400">🌍 Earth</span></div>
+                    </div>
+                    <div>
+                        <div class="font-bold text-yellow-300 mb-1">📜 Rules:</div>
+                        <ul class="text-gray-300 list-disc list-inside space-y-1">
+                            <li>Tiles slide until hitting another tile or edge</li>
+                            <li>Use <span class="text-purple-400">👽 Aliens</span> as stoppers</li>
+                            <li>Click to select astronaut or aliens</li>
+                            <li>Don't fall off the edge!</li>
+                        </ul>
+                    </div>
+                    <div>
+                        <div class="font-bold text-yellow-300 mb-1">🎮 Controls:</div>
+                        <div class="text-gray-300">
+                            <div>• Arrow Keys or WASD to move</div>
+                            <div>• U/Z to Undo • R to Reset Level</div>
+                            <div>• Click tiles to select them</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Level Select Screen -->
+    <div id="level-select-screen" class="screen flex-col items-center justify-start overflow-y-auto">
+        <div class="container mx-auto px-8 py-12">
+            <div class="flex justify-between items-center mb-8">
+                <h1 class="text-4xl font-bold text-white text-glow">SELECT LEVEL</h1>
+                <button onclick="showMenu()" class="glass px-6 py-2 rounded-lg text-white hover:bg-white/10 transition-all">
+                    ← BACK
+                </button>
+            </div>
+            <div id="level-grid" class="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-5 gap-4">
+                <!-- Levels will be generated here -->
+            </div>
+        </div>
+    </div>
+    
+    <!-- Game Screen -->
+    <div id="game-screen" class="screen">
+        <!-- HUD -->
+        <div class="absolute top-0 left-0 right-0 p-6 flex justify-between items-start pointer-events-none">
+            <div class="glass glow p-4 rounded-lg pointer-events-auto">
+                <div class="text-white">
+                    <div class="text-sm text-gray-300" id="level-number">Level 1</div>
+                    <div class="text-xl font-bold" id="level-name">First Steps</div>
+                    <div class="text-sm text-gray-400 mt-1">Moves: <span id="move-count">0</span></div>
+                    <div class="text-sm text-yellow-400 mt-1">🪙 Coins: <span id="coin-count">0</span></div>
+                </div>
+            </div>
+            <div class="flex gap-3 pointer-events-auto">
+                <button onclick="getHint()" id="hint-btn" class="glass glow px-4 py-2 rounded-lg text-white hover:bg-white/10 transition-all" title="Get Hint (1 Coin)">
+                    💡
+                </button>
+                <button onclick="undoMove()" class="glass glow px-4 py-2 rounded-lg text-white hover:bg-white/10 transition-all" title="Undo (U/Z)">
+                    ↶
+                </button>
+                <button onclick="resetLevel()" class="glass glow px-4 py-2 rounded-lg text-white hover:bg-white/10 transition-all" title="Reset (R)">
+                    ⟳
+                </button>
+                <button onclick="showLevelSelect()" class="glass glow px-4 py-2 rounded-lg text-white hover:bg-white/10 transition-all" title="Level Select">
+                    📋
+                </button>
+            </div>
+        </div>
+        
+        <!-- Hint Display -->
+        <div id="hint-display" class="absolute bottom-6 left-6 right-6 pointer-events-none hidden">
+            <div class="glass glow p-4 rounded-lg pointer-events-auto max-w-md mx-auto">
+                <div class="flex items-center gap-2 text-white font-semibold mb-2">
+                    <span class="text-2xl">💡</span>
+                    <span>HINT</span>
+                </div>
+                <div class="text-white text-sm" id="hint-text">
+                    Hint will appear here
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Win Screen -->
+    <div id="win-screen" class="screen items-center justify-center bg-black/70 backdrop-blur-sm">
+        <div class="glass glow p-12 rounded-2xl max-w-md w-full mx-4 text-center">
+            <div class="text-6xl mb-4">🎉</div>
+            <h2 class="text-4xl font-bold text-white mb-2 text-glow">LEVEL COMPLETE!</h2>
+            <p class="text-xl text-gray-300 mb-6" id="win-level-name">Level Name</p>
+            <div class="mb-6">
+                <div class="text-lg text-gray-400 mb-2">Moves: <span id="win-moves">0</span></div>
+                <div class="flex justify-center gap-2 text-3xl" id="win-stars">
+                    <!-- Stars will be added here -->
+                </div>
+            </div>
+            <div class="flex flex-col gap-3">
+                <button onclick="nextLevel()" id="next-level-btn" class="glass glow px-8 py-3 rounded-lg text-white text-lg font-semibold hover:bg-white/10 transition-all">
+                    NEXT LEVEL →
+                </button>
+                <button onclick="showLevelSelect()" class="glass px-8 py-3 rounded-lg text-white hover:bg-white/10 transition-all">
+                    LEVEL SELECT
+                </button>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Lose Screen -->
+    <div id="lose-screen" class="screen items-center justify-center bg-black/70 backdrop-blur-sm">
+        <div class="glass glow p-12 rounded-2xl max-w-md w-full mx-4 text-center">
+            <div class="text-6xl mb-4">💫</div>
+            <h2 class="text-4xl font-bold text-white mb-2 text-glow">LOST IN SPACE!</h2>
+            <p class="text-xl text-gray-300 mb-6" id="lose-level-name">Level Name</p>
+            <div class="mb-6">
+                <p class="text-gray-400">The astronaut drifted into the void...</p>
+                <div class="text-lg text-gray-400 mt-2">Moves: <span id="lose-moves">0</span></div>
+            </div>
+            <div class="flex flex-col gap-3">
+                <button onclick="retryLevel()" class="glass glow px-8 py-3 rounded-lg text-white text-lg font-semibold hover:bg-white/10 transition-all">
+                    TRY AGAIN
+                </button>
+                <button onclick="showLevelSelect()" class="glass px-8 py-3 rounded-lg text-white hover:bg-white/10 transition-all">
+                    LEVEL SELECT
+                </button>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Three.js -->
+    <script async src="https://unpkg.com/es-module-shims@1.6.3/dist/es-module-shims.js"></script>
+    <script type="importmap">
+    {
+        "imports": {
+            "three": "https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js",
+            "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.160.0/examples/jsm/"
+        }
+    }
+    </script>
+    
+    <!-- Howler.js -->
+    <script src="https://cdn.jsdelivr.net/npm/howler@2.2.4/dist/howler.min.js"></script>
+    
+    <!-- Main Game Script -->
+    <script type="module">
+        import * as THREE from 'three';
+        import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+        import { EffectComposer } from 'three/addons/postprocessing/EffectComposer.js';
+        import { RenderPass } from 'three/addons/postprocessing/RenderPass.js';
+        import { UnrealBloomPass } from 'three/addons/postprocessing/UnrealBloomPass.js';
+        
+        // ============================================
+        // BACKGROUND MUSIC
+        // ============================================
+        let backgroundMusic = null;
+        let musicEnabled = false;
+        
+        function initBackgroundMusic() {
+            backgroundMusic = new Howl({
+                src: ['space.mp3'],
+                loop: true,
+                volume: 0.3,
+                autoplay: false
+            });
+        }
+        
+        function toggleMusic() {
+            musicEnabled = !musicEnabled;
+            const button = document.getElementById('music-toggle');
+            
+            if (musicEnabled) {
+                if (backgroundMusic) {
+                    backgroundMusic.play();
+                }
+                button.textContent = '🔇 MUSIC OFF';
+            } else {
+                if (backgroundMusic) {
+                    backgroundMusic.pause();
+                }
+                button.textContent = '🔊 MUSIC ON';
+            }
+        }
+        
+        // ============================================
+        // LEVEL DATA
+        // ============================================
+        const LEVELS = [
+            // Levels 1-3: 4x4 boards
+            { id: 0, name: "Corner Trap", size: 4, astronautPos: { x: 0, y: 0 }, alienPositions: [{ x: 2, y: 0 }, { x: 0, y: 2 }, { x: 3, y: 2 }], earthPos: { x: 1, y: 1 }, difficulty: 1 },
+            { id: 1, name: "Four Corners", size: 4, astronautPos: { x: 0, y: 0 }, alienPositions: [{ x: 3, y: 0 }, { x: 0, y: 3 }, { x: 3, y: 3 }], earthPos: { x: 2, y: 2 }, difficulty: 2 },
+            
+            // Levels 4-5: 5x5 boards
+            { id: 2, name: "Cross Formation", size: 5, astronautPos: { x: 0, y: 2 }, alienPositions: [{ x: 2, y: 0 }, { x: 4, y: 2 }, { x: 2, y: 4 }, { x: 1, y: 2 }], earthPos: { x: 2, y: 2 }, difficulty: 2 },
+            { id: 3, name: "Spiral Dance", size: 5, astronautPos: { x: 0, y: 0 }, alienPositions: [{ x: 4, y: 0 }, { x: 4, y: 4 }, { x: 0, y: 4 }, { x: 2, y: 2 }], earthPos: { x: 3, y: 3 }, difficulty: 3 },
+            
+            // Levels 6-8: 6x6 boards
+            { id: 4, name: "Hexagon Pattern", size: 6, astronautPos: { x: 0, y: 3 }, alienPositions: [{ x: 2, y: 1 }, { x: 4, y: 1 }, { x: 5, y: 3 }, { x: 4, y: 5 }, { x: 2, y: 5 }], earthPos: { x: 3, y: 3 }, difficulty: 4 },
+            { id: 5, name: "Precision Jump", size: 6, astronautPos: { x: 0, y: 5 }, alienPositions: [{ x: 1, y: 5 }, { x: 3, y: 4 }, { x: 5, y: 3 }, { x: 4, y: 1 }, { x: 2, y: 0 }, { x: 0, y: 1 }], earthPos: { x: 3, y: 3 }, difficulty: 5 },
+            
+            // Levels 9-11: 7x7-8x8 boards
+            { id: 6, name: "Grand Arena", size: 7, astronautPos: { x: 0, y: 6 }, alienPositions: [{ x: 2, y: 6 }, { x: 4, y: 5 }, { x: 6, y: 3 }, { x: 5, y: 1 }, { x: 3, y: 0 }, { x: 1, y: 2 }], earthPos: { x: 3, y: 3 }, difficulty: 6 },
+            { id: 7, name: "Cosmic Labyrinth", size: 7, astronautPos: { x: 0, y: 3 }, alienPositions: [{ x: 1, y: 1 }, { x: 3, y: 1 }, { x: 5, y: 1 }, { x: 1, y: 3 }, { x: 5, y: 3 }, { x: 1, y: 5 }, { x: 3, y: 5 }, { x: 5, y: 5 }], earthPos: { x: 3, y: 3 }, difficulty: 7 },
+            { id: 8, name: "Final Frontier", size: 8, astronautPos: { x: 0, y: 7 }, alienPositions: [{ x: 2, y: 7 }, { x: 4, y: 6 }, { x: 6, y: 5 }, { x: 7, y: 3 }, { x: 6, y: 1 }, { x: 4, y: 0 }, { x: 2, y: 1 }, { x: 1, y: 3 }], earthPos: { x: 4, y: 4 }, difficulty: 8 },
+            { id: 9, name: "Master of Space", size: 8, astronautPos: { x: 0, y: 0 }, alienPositions: [{ x: 1, y: 2 }, { x: 2, y: 4 }, { x: 3, y: 6 }, { x: 5, y: 7 }, { x: 7, y: 5 }, { x: 6, y: 3 }, { x: 4, y: 1 }, { x: 2, y: 0 }], earthPos: { x: 4, y: 4 }, difficulty: 9 },
+            { id: 10, name: "Orbital Mechanics", size: 7, astronautPos: { x: 0, y: 0 }, alienPositions: [{ x: 1, y: 0 }, { x: 3, y: 0 }, { x: 6, y: 1 }, { x: 6, y: 3 }, { x: 5, y: 6 }, { x: 3, y: 6 }, { x: 0, y: 5 }], earthPos: { x: 3, y: 3 }, difficulty: 7 },
+            
+            // Level 12: 6x6 board (Hard difficulty) - SOLVABLE
+            { id: 11, name: "Gravity Well", size: 6, astronautPos: { x: 0, y: 5 }, alienPositions: [{ x: 1, y: 3 }, { x: 2, y: 1 }, { x: 4, y: 2 }, { x: 5, y: 4 }, { x: 3, y: 5 }], earthPos: { x: 3, y: 2 }, difficulty: 5 }
+        ];
+        
+        const ALIEN_COLORS = [
+            { base: 0xa78bfa, emissive: 0x8b5cf6 },
+            { base: 0x60a5fa, emissive: 0x3b82f6 },
+            { base: 0x34d399, emissive: 0x10b981 },
+            { base: 0xfbbf24, emissive: 0xf59e0b },
+            { base: 0xf472b6, emissive: 0xec4899 },
+            { base: 0x22d3ee, emissive: 0x06b6d4 },
+            { base: 0xfb7185, emissive: 0xf43f5e },
+            { base: 0xa3e635, emissive: 0x84cc16 }
+        ];
+        
+        const DIRECTIONS = {
+            UP: { x: 0, y: -1 },
+            DOWN: { x: 0, y: 1 },
+            LEFT: { x: -1, y: 0 },
+            RIGHT: { x: 1, y: 0 }
+        };
+        
+        // Convert screen-relative direction to world direction based on camera angle
+        function getCameraRelativeDirection(keyDirection) {
+            if (!camera) return keyDirection;
+            
+            // Get camera's horizontal rotation angle (around Y axis)
+            const cameraAngle = Math.atan2(camera.position.x, camera.position.z);
+            
+            // Get the input direction as a 2D vector
+            let inputX = keyDirection.x;
+            let inputY = keyDirection.y;
+            
+            // Rotate the input vector by the camera angle
+            // This makes controls relative to screen, not world
+            const cos = Math.cos(-cameraAngle);
+            const sin = Math.sin(-cameraAngle);
+            
+            const rotatedX = inputX * cos - inputY * sin;
+            const rotatedY = inputX * sin + inputY * cos;
+            
+            // Round to nearest integer to get clean cardinal directions
+            const finalX = Math.round(rotatedX);
+            const finalY = Math.round(rotatedY);
+            
+            return { x: finalX, y: finalY };
+        }
+        
+        // ============================================
+        // GAME STATE
+        // ============================================
+        class GameState {
+            constructor() {
+                this.currentLevel = 0;
+                this.moves = 0;
+                this.moveHistory = [];
+                this.completedLevels = JSON.parse(localStorage.getItem('completedLevels') || '[]');
+                this.levelStars = JSON.parse(localStorage.getItem('levelStars') || '{}');
+                this.coins = parseInt(localStorage.getItem('coins') || '0');
+                this.hintsUsed = 0; // Hints used in current level
+                this.maxHintsPerLevel = 3;
+                this.astronautPos = null;
+                this.alienPositions = [];
+                this.earthPos = null;
+                this.lostTiles = [];
+                this.selectedTile = null; // Track selected tile (astronaut or alien index)
+            }
+            
+            loadLevel(levelIndex) {
+                const level = LEVELS[levelIndex];
+                this.currentLevel = levelIndex;
+                this.moves = 0;
+                this.moveHistory = [];
+                this.hintsUsed = 0;
+                this.astronautPos = { ...level.astronautPos };
+                this.alienPositions = level.alienPositions.map(p => ({ ...p }));
+                this.earthPos = { ...level.earthPos };
+                this.lostTiles = [];
+                this.updateUI();
+            }
+            
+            updateUI() {
+                const level = LEVELS[this.currentLevel];
+                document.getElementById('level-number').textContent = `Level ${this.currentLevel + 1}`;
+                document.getElementById('level-name').textContent = level.name;
+                document.getElementById('move-count').textContent = this.moves;
+                document.getElementById('coin-count').textContent = this.coins;
+                
+                // Update hint button state
+                const hintBtn = document.getElementById('hint-btn');
+                if (hintBtn) {
+                    if (this.coins === 0 || this.hintsUsed >= this.maxHintsPerLevel) {
+                        hintBtn.style.opacity = '0.5';
+                        hintBtn.style.cursor = 'not-allowed';
+                    } else {
+                        hintBtn.style.opacity = '1';
+                        hintBtn.style.cursor = 'pointer';
+                    }
+                }
+            }
+            
+            incrementMoves() {
+                this.moves++;
+                this.updateUI();
+            }
+            
+            calculateStars() {
+                if (this.moves <= 5) return 3;
+                if (this.moves <= 10) return 2;
+                return 1;
+            }
+            
+            completeLevel() {
+                const stars = this.calculateStars();
+                if (!this.completedLevels.includes(this.currentLevel)) {
+                    this.completedLevels.push(this.currentLevel);
+                    // Award 1 coin for completing a new level
+                    this.coins++;
+                    localStorage.setItem('coins', this.coins.toString());
+                }
+                this.levelStars[this.currentLevel] = Math.max(this.levelStars[this.currentLevel] || 0, stars);
+                localStorage.setItem('completedLevels', JSON.stringify(this.completedLevels));
+                localStorage.setItem('levelStars', JSON.stringify(this.levelStars));
+                return stars;
+            }
+        }
+        
+        const gameState = new GameState();
+        
+        // ============================================
+        // THREE.JS SETUP
+        // ============================================
+        let scene, camera, renderer, controls, composer;
+        let board, astronaut, aliens = [], earth;
+        let stars;
+        
+        function initThree() {
+            // Scene
+            scene = new THREE.Scene();
+            scene.background = new THREE.Color(0x0a0e27);
+            
+            // Camera - Top-down view for better visibility
+            camera = new THREE.PerspectiveCamera(50, window.innerWidth / window.innerHeight, 0.1, 1000);
+            camera.position.set(0, 20, 5);
+            camera.lookAt(0, 0, 0);
+            
+            // Renderer
+            renderer = new THREE.WebGLRenderer({ antialias: true });
+            renderer.setSize(window.innerWidth, window.innerHeight);
+            renderer.setPixelRatio(window.devicePixelRatio);
+            document.getElementById('canvas-container').appendChild(renderer.domElement);
+            
+            // Controls - Limited rotation for top-down view
+            controls = new OrbitControls(camera, renderer.domElement);
+            controls.enableZoom = false;
+            controls.enablePan = false;
+            controls.minPolarAngle = Math.PI / 6;
+            controls.maxPolarAngle = Math.PI / 3;
+            controls.target.set(0, 0, 0);
+            
+            // Lights
+            const ambientLight = new THREE.AmbientLight(0xffffff, 0.3);
+            scene.add(ambientLight);
+            
+            const pointLight1 = new THREE.PointLight(0xffffff, 1);
+            pointLight1.position.set(10, 10, 10);
+            scene.add(pointLight1);
+            
+            const pointLight2 = new THREE.PointLight(0x6366f1, 0.5);
+            pointLight2.position.set(-10, -10, -10);
+            scene.add(pointLight2);
+            
+            // Stars
+            createStars();
+            
+            // Post-processing
+            composer = new EffectComposer(renderer);
+            const renderPass = new RenderPass(scene, camera);
+            composer.addPass(renderPass);
+            
+            const bloomPass = new UnrealBloomPass(
+                new THREE.Vector2(window.innerWidth, window.innerHeight),
+                0.5, 0.2, 0.9
+            );
+            composer.addPass(bloomPass);
+            
+            // Handle resize
+            window.addEventListener('resize', onWindowResize);
+        }
+        
+        function createStars() {
+            const starsGeometry = new THREE.BufferGeometry();
+            const starsMaterial = new THREE.PointsMaterial({
+                color: 0xffffff,
+                size: 0.7,
+                transparent: true
+            });
+            
+            const starsVertices = [];
+            for (let i = 0; i < 5000; i++) {
+                const x = (Math.random() - 0.5) * 200;
+                const y = (Math.random() - 0.5) * 200;
+                const z = (Math.random() - 0.5) * 200;
+                starsVertices.push(x, y, z);
+            }
+            
+            starsGeometry.setAttribute('position', new THREE.Float32BufferAttribute(starsVertices, 3));
+            stars = new THREE.Points(starsGeometry, starsMaterial);
+            scene.add(stars);
+        }
+        
+        // ============================================
+        // SHOOTING STARS / COMETS
+        // ============================================
+        const shootingStars = [];
+        
+        class ShootingStar {
+            constructor() {
+                // Random starting position at edge of view
+                const side = Math.floor(Math.random() * 4);
+                const distance = 50;
+                
+                switch(side) {
+                    case 0: // Top
+                        this.position = new THREE.Vector3(
+                            (Math.random() - 0.5) * 100,
+                            distance,
+                            (Math.random() - 0.5) * 100
+                        );
+                        break;
+                    case 1: // Right
+                        this.position = new THREE.Vector3(
+                            distance,
+                            (Math.random() - 0.5) * 100,
+                            (Math.random() - 0.5) * 100
+                        );
+                        break;
+                    case 2: // Bottom
+                        this.position = new THREE.Vector3(
+                            (Math.random() - 0.5) * 100,
+                            -distance,
+                            (Math.random() - 0.5) * 100
+                        );
+                        break;
+                    case 3: // Left
+                        this.position = new THREE.Vector3(
+                            -distance,
+                            (Math.random() - 0.5) * 100,
+                            (Math.random() - 0.5) * 100
+                        );
+                        break;
+                }
+                
+                // Random velocity towards opposite direction
+                this.velocity = new THREE.Vector3(
+                    -this.position.x * 0.02 + (Math.random() - 0.5) * 0.5,
+                    -this.position.y * 0.02 + (Math.random() - 0.5) * 0.5,
+                    -this.position.z * 0.02 + (Math.random() - 0.5) * 0.5
+                );
+                
+                this.life = 1.0;
+                this.decay = 0.01 + Math.random() * 0.02;
+                
+                // Create trail
+                const trailLength = 8;
+                const positions = [];
+                for (let i = 0; i < trailLength; i++) {
+                    positions.push(this.position.x, this.position.y, this.position.z);
+                }
+                
+                const geometry = new THREE.BufferGeometry();
+                geometry.setAttribute('position', new THREE.Float32BufferAttribute(positions, 3));
+                
+                const material = new THREE.LineBasicMaterial({
+                    color: Math.random() > 0.5 ? 0xffffff : 0x6366f1,
+                    transparent: true,
+                    opacity: 1.0,
+                    linewidth: 2
+                });
+                
+                this.trail = new THREE.Line(geometry, material);
+                scene.add(this.trail);
+            }
+            
+            update(deltaTime) {
+                // Update position
+                this.position.add(this.velocity.clone().multiplyScalar(deltaTime * 60));
+                
+                // Update trail
+                const positions = this.trail.geometry.attributes.position.array;
+                for (let i = positions.length - 3; i >= 3; i -= 3) {
+                    positions[i] = positions[i - 3];
+                    positions[i + 1] = positions[i - 2];
+                    positions[i + 2] = positions[i - 1];
+                }
+                positions[0] = this.position.x;
+                positions[1] = this.position.y;
+                positions[2] = this.position.z;
+                this.trail.geometry.attributes.position.needsUpdate = true;
+                
+                // Fade out
+                this.life -= this.decay * deltaTime * 60;
+                this.trail.material.opacity = this.life;
+                
+                return this.life > 0;
+            }
+            
+            remove() {
+                scene.remove(this.trail);
+                this.trail.geometry.dispose();
+                this.trail.material.dispose();
+            }
+        }
+        
+        let shootingStarTimer = 0;
+        const shootingStarInterval = 3; // Spawn every 3 seconds on average
+        
+        function updateShootingStars(deltaTime) {
+            // Spawn new shooting stars occasionally
+            shootingStarTimer += deltaTime;
+            if (shootingStarTimer > shootingStarInterval && Math.random() > 0.5) {
+                shootingStars.push(new ShootingStar());
+                shootingStarTimer = 0;
+            }
+            
+            // Update existing shooting stars
+            for (let i = shootingStars.length - 1; i >= 0; i--) {
+                if (!shootingStars[i].update(deltaTime)) {
+                    shootingStars[i].remove();
+                    shootingStars.splice(i, 1);
+                }
+            }
+        }
+        
+        function onWindowResize() {
+            camera.aspect = window.innerWidth / window.innerHeight;
+            camera.updateProjectionMatrix();
+            renderer.setSize(window.innerWidth, window.innerHeight);
+            composer.setSize(window.innerWidth, window.innerHeight);
+        }
+        
+        // ============================================
+        // GAME OBJECTS
+        // ============================================
+        class Board {
+            constructor(size) {
+                this.size = size;
+                this.tileSize = 2.2;
+                this.gap = 0.25;
+                this.tiles = [];
+                this.group = new THREE.Group();
+                scene.add(this.group);
+                this.createBoard();
+            }
+            
+            createBoard() {
+                const totalSize = this.size * (this.tileSize + this.gap) - this.gap;
+                const offset = totalSize / 2 - this.tileSize / 2;
+                
+                for (let y = 0; y < this.size; y++) {
+                    for (let x = 0; x < this.size; x++) {
+                        const posX = x * (this.tileSize + this.gap) - offset;
+                        const posZ = y * (this.tileSize + this.gap) - offset;
+                        
+                        const isEarth = gameState.earthPos && gameState.earthPos.x === x && gameState.earthPos.y === y;
+                        const tile = this.createTile(posX, posZ, isEarth);
+                        this.group.add(tile);
+                        this.tiles.push(tile);
+                    }
+                }
+            }
+            
+            createTile(x, z, isEarth) {
+                const group = new THREE.Group();
+                
+                const geometry = new THREE.BoxGeometry(this.tileSize, 0.2, this.tileSize);
+                const material = new THREE.MeshStandardMaterial({
+                    color: isEarth ? 0x4ade80 : 0x334155,
+                    metalness: 0.3,
+                    roughness: 0.7,
+                    emissive: isEarth ? 0x22c55e : 0x1e293b,
+                    emissiveIntensity: isEarth ? 0.2 : 0.05
+                });
+                
+                const mesh = new THREE.Mesh(geometry, material);
+                mesh.position.set(x, -0.1, z);
+                group.add(mesh);
+                
+                // Glow
+                const glowGeometry = new THREE.BoxGeometry(this.tileSize + 0.05, 0.25, this.tileSize + 0.05);
+                const glowMaterial = new THREE.MeshBasicMaterial({
+                    color: isEarth ? 0x22c55e : 0x475569,
+                    transparent: true,
+                    opacity: 0.3,
+                    side: THREE.DoubleSide
+                });
+                const glowMesh = new THREE.Mesh(glowGeometry, glowMaterial);
+                glowMesh.position.set(x, -0.1, z);
+                group.add(glowMesh);
+                
+                // Edges
+                const edges = new THREE.EdgesGeometry(geometry);
+                const lineMaterial = new THREE.LineBasicMaterial({ color: 0x64748b });
+                const lineSegments = new THREE.LineSegments(edges, lineMaterial);
+                lineSegments.position.set(x, -0.1, z);
+                group.add(lineSegments);
+                
+                return group;
+            }
+            
+            getWorldPosition(gridX, gridY) {
+                const totalSize = this.size * (this.tileSize + this.gap) - this.gap;
+                const offset = totalSize / 2 - this.tileSize / 2;
+                return {
+                    x: gridX * (this.tileSize + this.gap) - offset,
+                    z: gridY * (this.tileSize + this.gap) - offset
+                };
+            }
+            
+            clear() {
+                scene.remove(this.group);
+            }
+        }
+        
+        class Astronaut {
+            constructor(gridPos) {
+                this.gridPos = { ...gridPos };
+                this.group = new THREE.Group();
+                this.falling = false;
+                this.time = 0;
+                this.createMesh();
+                scene.add(this.group);
+            }
+            
+            createMesh() {
+                // Base body
+                const geometry = new THREE.BoxGeometry(1.4, 0.6, 1.4);
+                const material = new THREE.MeshStandardMaterial({
+                    color: 0xfb923c,
+                    metalness: 0.4,
+                    roughness: 0.6,
+                    emissive: 0xf97316,
+                    emissiveIntensity: 0.3
+                });
+                
+                this.mesh = new THREE.Mesh(geometry, material);
+                this.mesh.position.y = 0.3;
+                this.group.add(this.mesh);
+                
+                // Helmet on top
+                const helmetGeometry = new THREE.CylinderGeometry(0.5, 0.5, 0.4, 16);
+                const helmetMaterial = new THREE.MeshStandardMaterial({
+                    color: 0xffd700,
+                    metalness: 0.6,
+                    roughness: 0.4,
+                    emissive: 0xffaa00,
+                    emissiveIntensity: 0.2
+                });
+                const helmet = new THREE.Mesh(helmetGeometry, helmetMaterial);
+                helmet.position.y = 0.8;
+                this.group.add(helmet);
+                
+                // Glow
+                const glowGeometry = new THREE.BoxGeometry(1.5, 0.65, 1.5);
+                const glowMaterial = new THREE.MeshBasicMaterial({
+                    color: 0xfb923c,
+                    transparent: true,
+                    opacity: 0.3
+                });
+                const glowMesh = new THREE.Mesh(glowGeometry, glowMaterial);
+                glowMesh.position.y = 0.3;
+                this.group.add(glowMesh);
+                
+                // Light
+                const light = new THREE.PointLight(0xfb923c, 0.5, 3);
+                light.position.y = 0.5;
+                this.group.add(light);
+                
+                // Emoji sprite
+                this.createEmojiSprite('👨‍🚀', 1.5);
+                
+                // Selection ring
+                this.createSelectionRing();
+                
+                this.updatePosition();
+            }
+            
+            updatePosition() {
+                if (!board) return;
+                const worldPos = board.getWorldPosition(this.gridPos.x, this.gridPos.y);
+                this.group.position.x = worldPos.x;
+                this.group.position.z = worldPos.z;
+            }
+            
+            createEmojiSprite(emoji, yPos) {
+                const canvas = document.createElement('canvas');
+                canvas.width = 128;
+                canvas.height = 128;
+                const ctx = canvas.getContext('2d');
+                ctx.font = 'bold 100px Arial';
+                ctx.textAlign = 'center';
+                ctx.textBaseline = 'middle';
+                ctx.fillText(emoji, 64, 64);
+                
+                const texture = new THREE.CanvasTexture(canvas);
+                const spriteMaterial = new THREE.SpriteMaterial({ map: texture });
+                this.sprite = new THREE.Sprite(spriteMaterial);
+                this.sprite.scale.set(1, 1, 1);
+                this.sprite.position.y = yPos;
+                this.group.add(this.sprite);
+            }
+            
+            createSelectionRing() {
+                const ringGeometry = new THREE.TorusGeometry(1.2, 0.08, 16, 32);
+                const ringMaterial = new THREE.MeshStandardMaterial({
+                    color: 0xffff00,
+                    emissive: 0xffff00,
+                    emissiveIntensity: 0.5,
+                    metalness: 0.3,
+                    roughness: 0.5,
+                    opacity: 0.7,
+                    transparent: true
+                });
+                this.selectionRing = new THREE.Mesh(ringGeometry, ringMaterial);
+                this.selectionRing.rotation.x = Math.PI / 2;
+                this.selectionRing.position.y = 0.05;
+                this.selectionRing.visible = false;
+                this.group.add(this.selectionRing);
+            }
+            
+            setSelected(selected) {
+                if (this.selectionRing) {
+                    this.selectionRing.visible = selected;
+                }
+            }
+            
+            update(deltaTime) {
+                this.time += deltaTime;
+                if (!this.falling) {
+                    this.group.position.y = 0.5 + Math.sin(this.time * 2) * 0.1;
+                    // Gentle rotation animation
+                    this.group.rotation.y = Math.sin(this.time * 0.5) * 0.1;
+                    // Sprite always faces camera
+                    if (this.sprite && camera) {
+                        this.sprite.quaternion.copy(camera.quaternion);
+                    }
+                    // Animate selection ring
+                    if (this.selectionRing && this.selectionRing.visible) {
+                        this.selectionRing.rotation.z += deltaTime * 2;
+                    }
+                }
+            }
+            
+            fall() {
+                this.falling = true;
+                const startY = this.group.position.y;
+                const duration = 1000;
+                const startTime = Date.now();
+                
+                const animate = () => {
+                    const elapsed = Date.now() - startTime;
+                    const progress = Math.min(elapsed / duration, 1);
+                    
+                    this.group.position.y = startY - progress * 10;
+                    this.group.scale.setScalar(1 - progress);
+                    this.group.rotation.y = progress * Math.PI * 4;
+                    
+                    if (progress < 1) {
+                        requestAnimationFrame(animate);
+                    } else {
+                        scene.remove(this.group);
+                    }
+                };
+                animate();
+            }
+            
+            remove() {
+                scene.remove(this.group);
+            }
+        }
+        
+        class Alien {
+            constructor(gridPos, colorIndex) {
+                this.gridPos = { ...gridPos };
+                this.colorIndex = colorIndex;
+                this.group = new THREE.Group();
+                this.falling = false;
+                this.time = Math.random() * Math.PI * 2;
+                this.createMesh();
+                scene.add(this.group);
+            }
+            
+            createMesh() {
+                const color = ALIEN_COLORS[this.colorIndex % ALIEN_COLORS.length];
+                
+                // Base body
+                const geometry = new THREE.BoxGeometry(1.4, 0.6, 1.4);
+                const material = new THREE.MeshStandardMaterial({
+                    color: color.base,
+                    metalness: 0.5,
+                    roughness: 0.5,
+                    emissive: color.emissive,
+                    emissiveIntensity: 0.4
+                });
+                
+                this.mesh = new THREE.Mesh(geometry, material);
+                this.mesh.position.y = 0.3;
+                this.group.add(this.mesh);
+                
+                // Pyramid/cone on top for distinction
+                const coneGeometry = new THREE.ConeGeometry(0.5, 0.6, 4);
+                const coneMaterial = new THREE.MeshStandardMaterial({
+                    color: color.base,
+                    metalness: 0.6,
+                    roughness: 0.4,
+                    emissive: color.emissive,
+                    emissiveIntensity: 0.5
+                });
+                const cone = new THREE.Mesh(coneGeometry, coneMaterial);
+                cone.position.y = 0.9;
+                this.group.add(cone);
+                
+                // Glow
+                const glowGeometry = new THREE.BoxGeometry(1.5, 0.65, 1.5);
+                const glowMaterial = new THREE.MeshBasicMaterial({
+                    color: color.base,
+                    transparent: true,
+                    opacity: 0.3
+                });
+                const glowMesh = new THREE.Mesh(glowGeometry, glowMaterial);
+                glowMesh.position.y = 0.3;
+                this.group.add(glowMesh);
+                
+                // Light
+                const light = new THREE.PointLight(color.base, 0.4, 2.5);
+                light.position.y = 0.5;
+                this.group.add(light);
+                
+                // Emoji sprite
+                this.createEmojiSprite('👽', 1.5);
+                
+                // Selection ring
+                this.createSelectionRing();
+                
+                this.updatePosition();
+            }
+            
+            updatePosition() {
+                if (!board) return;
+                const worldPos = board.getWorldPosition(this.gridPos.x, this.gridPos.y);
+                this.group.position.x = worldPos.x;
+                this.group.position.z = worldPos.z;
+            }
+            
+            createEmojiSprite(emoji, yPos) {
+                const canvas = document.createElement('canvas');
+                canvas.width = 128;
+                canvas.height = 128;
+                const ctx = canvas.getContext('2d');
+                ctx.font = 'bold 100px Arial';
+                ctx.textAlign = 'center';
+                ctx.textBaseline = 'middle';
+                ctx.fillText(emoji, 64, 64);
+                
+                const texture = new THREE.CanvasTexture(canvas);
+                const spriteMaterial = new THREE.SpriteMaterial({ map: texture });
+                this.sprite = new THREE.Sprite(spriteMaterial);
+                this.sprite.scale.set(1, 1, 1);
+                this.sprite.position.y = yPos;
+                this.group.add(this.sprite);
+            }
+            
+            createSelectionRing() {
+                const ringGeometry = new THREE.TorusGeometry(1.2, 0.08, 16, 32);
+                const ringMaterial = new THREE.MeshStandardMaterial({
+                    color: 0xffff00,
+                    emissive: 0xffff00,
+                    emissiveIntensity: 0.5,
+                    metalness: 0.3,
+                    roughness: 0.5,
+                    opacity: 0.7,
+                    transparent: true
+                });
+                this.selectionRing = new THREE.Mesh(ringGeometry, ringMaterial);
+                this.selectionRing.rotation.x = Math.PI / 2;
+                this.selectionRing.position.y = 0.05;
+                this.selectionRing.visible = false;
+                this.group.add(this.selectionRing);
+            }
+            
+            setSelected(selected) {
+                if (this.selectionRing) {
+                    this.selectionRing.visible = selected;
+                }
+            }
+            
+            update(deltaTime) {
+                this.time += deltaTime;
+                if (!this.falling) {
+                    this.group.rotation.y = Math.sin(this.time * 1.5) * 0.2;
+                    this.group.position.y = 0.5 + Math.sin(this.time * 2 + this.colorIndex) * 0.08;
+                    // Sprite always faces camera
+                    if (this.sprite && camera) {
+                        this.sprite.quaternion.copy(camera.quaternion);
+                    }
+                    // Animate selection ring
+                    if (this.selectionRing && this.selectionRing.visible) {
+                        this.selectionRing.rotation.z += deltaTime * 2;
+                    }
+                }
+            }
+            
+            fall() {
+                this.falling = true;
+                const startY = this.group.position.y;
+                const duration = 1000;
+                const startTime = Date.now();
+                
+                const animate = () => {
+                    const elapsed = Date.now() - startTime;
+                    const progress = Math.min(elapsed / duration, 1);
+                    
+                    this.group.position.y = startY - progress * 10;
+                    this.group.scale.setScalar(1 - progress);
+                    this.group.rotation.y = progress * Math.PI * 4;
+                    
+                    if (progress < 1) {
+                        requestAnimationFrame(animate);
+                    } else {
+                        scene.remove(this.group);
+                    }
+                };
+                animate();
+            }
+            
+            remove() {
+                scene.remove(this.group);
+            }
+        }
+        
+        class Earth {
+            constructor(gridPos) {
+                this.gridPos = { ...gridPos };
+                this.group = new THREE.Group();
+                this.time = 0;
+                this.createMesh();
+                scene.add(this.group);
+            }
+            
+            createMesh() {
+                // Larger sphere for better visibility
+                const geometry = new THREE.SphereGeometry(0.9, 32, 32);
+                const material = new THREE.MeshStandardMaterial({
+                    color: 0x3b82f6,
+                    metalness: 0.3,
+                    roughness: 0.7,
+                    emissive: 0x22c55e,
+                    emissiveIntensity: 0.6
+                });
+                
+                this.mesh = new THREE.Mesh(geometry, material);
+                this.group.add(this.mesh);
+                
+                // Enhanced glow
+                const glowGeometry = new THREE.SphereGeometry(1.0, 32, 32);
+                const glowMaterial = new THREE.MeshBasicMaterial({
+                    color: 0x60a5fa,
+                    transparent: true,
+                    opacity: 0.5
+                });
+                this.glowMesh = new THREE.Mesh(glowGeometry, glowMaterial);
+                this.group.add(this.glowMesh);
+                
+                // Brighter light
+                const light = new THREE.PointLight(0x3b82f6, 1.5, 5);
+                this.group.add(light);
+                
+                // Emoji sprite
+                this.createEmojiSprite('🌍', 1.8);
+                
+                this.updatePosition();
+            }
+            
+            updatePosition() {
+                if (!board) return;
+                const worldPos = board.getWorldPosition(this.gridPos.x, this.gridPos.y);
+                this.group.position.x = worldPos.x;
+                this.group.position.z = worldPos.z;
+            }
+            
+            createEmojiSprite(emoji, yPos) {
+                const canvas = document.createElement('canvas');
+                canvas.width = 128;
+                canvas.height = 128;
+                const ctx = canvas.getContext('2d');
+                ctx.font = 'bold 100px Arial';
+                ctx.textAlign = 'center';
+                ctx.textBaseline = 'middle';
+                ctx.fillText(emoji, 64, 64);
+                
+                const texture = new THREE.CanvasTexture(canvas);
+                const spriteMaterial = new THREE.SpriteMaterial({ map: texture });
+                this.sprite = new THREE.Sprite(spriteMaterial);
+                this.sprite.scale.set(1.2, 1.2, 1);
+                this.sprite.position.y = yPos;
+                this.group.add(this.sprite);
+            }
+            
+            update(deltaTime) {
+                this.time += deltaTime;
+                // Rotating Earth sphere
+                this.mesh.rotation.y += deltaTime * 0.5;
+                this.glowMesh.rotation.y -= deltaTime * 0.3;
+                // Floating animation
+                this.group.position.y = 0.5 + Math.sin(this.time * 1.5) * 0.15;
+                // Pulsing glow effect
+                this.glowMesh.material.opacity = 0.4 + Math.sin(this.time * 3) * 0.1;
+                // Sprite always faces camera and rotates
+                if (this.sprite && camera) {
+                    this.sprite.quaternion.copy(camera.quaternion);
+                    this.sprite.material.rotation = this.time * 0.5;
+                }
+            }
+            
+            remove() {
+                scene.remove(this.group);
+            }
+        }
+        
+        // ============================================
+        // GAME LOGIC
+        // ============================================
+        function isValidPosition(pos, boardSize) {
+            return pos.x >= 0 && pos.x < boardSize && pos.y >= 0 && pos.y < boardSize;
+        }
+        
+        function findStoppingPosition(startPos, direction, boardSize, obstacles) {
+            let currentPos = { ...startPos };
+            let nextPos = {
+                x: currentPos.x + direction.x,
+                y: currentPos.y + direction.y
+            };
+            
+            const path = [{ ...currentPos }];
+            
+            while (isValidPosition(nextPos, boardSize)) {
+                const hasObstacle = obstacles.some(obs => obs.x === nextPos.x && obs.y === nextPos.y);
+                
+                if (hasObstacle) {
+                    return { finalPos: currentPos, path, fell: false };
+                }
+                
+                currentPos = { ...nextPos };
+                path.push({ ...currentPos });
+                nextPos = {
+                    x: currentPos.x + direction.x,
+                    y: currentPos.y + direction.y
+                };
+            }
+            
+            return { finalPos: null, path, fell: true };
+        }
+        
+        function moveAstronaut(direction) {
+            if (!gameState.astronautPos || !board) return;
+            
+            const level = LEVELS[gameState.currentLevel];
+            const obstacles = [...gameState.alienPositions];
+            
+            const { finalPos, path, fell } = findStoppingPosition(
+                gameState.astronautPos,
+                direction,
+                level.size,
+                obstacles
+            );
+            
+            if (fell) {
+                playSound('fall');
+                astronaut.fall();
+                gameState.astronautPos = null;
+                gameState.incrementMoves();
+                setTimeout(() => showLoseScreen(), 1000);
+            } else if (finalPos && (finalPos.x !== gameState.astronautPos.x || finalPos.y !== gameState.astronautPos.y)) {
+                playSound('move');
+                gameState.astronautPos = finalPos;
+                astronaut.gridPos = finalPos;
+                astronaut.updatePosition();
+                gameState.incrementMoves();
+                
+                setTimeout(() => playSound('collision'), 200);
+                
+                // Check win
+                if (finalPos.x === gameState.earthPos.x && finalPos.y === gameState.earthPos.y) {
+                    setTimeout(() => {
+                        playSound('win');
+                        showWinScreen();
+                    }, 500);
+                }
+            }
+        }
+        
+        // ============================================
+        // LEVEL SOLVER
+        // ============================================
+        function isLevelSolvable(level) {
+            const queue = [];
+            const visited = new Set();
+            
+            // Initial state
+            const initialState = {
+                astronaut: { ...level.astronautPos },
+                aliens: level.alienPositions.map(p => ({ ...p })),
+                moves: []
+            };
+            
+            queue.push(initialState);
+            
+            function stateKey(state) {
+                const astro = `${state.astronaut.x},${state.astronaut.y}`;
+                const aliens = state.aliens.map(a => `${a.x},${a.y}`).sort().join('|');
+                return `${astro}:${aliens}`;
+            }
+            
+            visited.add(stateKey(initialState));
+            
+            const directions = [
+                { name: 'UP', dir: DIRECTIONS.UP },
+                { name: 'DOWN', dir: DIRECTIONS.DOWN },
+                { name: 'LEFT', dir: DIRECTIONS.LEFT },
+                { name: 'RIGHT', dir: DIRECTIONS.RIGHT }
+            ];
+            
+            let iterations = 0;
+            const maxIterations = 10000; // Prevent infinite loops
+            
+            while (queue.length > 0 && iterations < maxIterations) {
+                iterations++;
+                const state = queue.shift();
+                
+                // Check if astronaut reached Earth
+                if (state.astronaut.x === level.earthPos.x && state.astronaut.y === level.earthPos.y) {
+                    return {
+                        solvable: true,
+                        moves: state.moves,
+                        minMoves: state.moves.length,
+                        iterations: iterations
+                    };
+                }
+                
+                // Try moving astronaut in each direction
+                for (const { name, dir } of directions) {
+                    const { finalPos, fell } = findStoppingPosition(
+                        state.astronaut,
+                        dir,
+                        level.size,
+                        state.aliens
+                    );
+                    
+                    if (!fell && finalPos) {
+                        const newState = {
+                            astronaut: finalPos,
+                            aliens: state.aliens.map(a => ({ ...a })),
+                            moves: [...state.moves, `ASTRONAUT_${name}`]
+                        };
+                        
+                        const key = stateKey(newState);
+                        if (!visited.has(key)) {
+                            visited.add(key);
+                            queue.push(newState);
+                        }
+                    }
+                }
+                
+                // Try moving each alien (optional - makes solver more thorough)
+                for (let i = 0; i < state.aliens.length; i++) {
+                    for (const { name, dir } of directions) {
+                        const obstacles = [
+                            state.astronaut,
+                            ...state.aliens.filter((_, idx) => idx !== i)
+                        ];
+                        
+                        const { finalPos, fell } = findStoppingPosition(
+                            state.aliens[i],
+                            dir,
+                            level.size,
+                            obstacles
+                        );
+                        
+                        if (!fell && finalPos && (finalPos.x !== state.aliens[i].x || finalPos.y !== state.aliens[i].y)) {
+                            const newAliens = state.aliens.map((a, idx) => 
+                                idx === i ? finalPos : { ...a }
+                            );
+                            
+                            const newState = {
+                                astronaut: { ...state.astronaut },
+                                aliens: newAliens,
+                                moves: [...state.moves, `ALIEN${i}_${name}`]
+                            };
+                            
+                            const key = stateKey(newState);
+                            if (!visited.has(key)) {
+                                visited.add(key);
+                                queue.push(newState);
+                            }
+                        }
+                    }
+                }
+            }
+            
+            return {
+                solvable: false,
+                reason: iterations >= maxIterations ? 'Max iterations reached' : 'No solution found',
+                iterations: iterations
+            };
+        }
+        
+        function formatSolutionMove(move) {
+            const alienColorNames = ['purple', 'blue', 'green', 'orange', 'pink', 'cyan', 'red', 'lime'];
+            
+            if (move.startsWith('ASTRONAUT_')) {
+                return move;
+            } else if (move.startsWith('ALIEN')) {
+                const parts = move.split('_');
+                const alienIndex = parseInt(parts[0].replace('ALIEN', ''));
+                const direction = parts[1];
+                const colorName = alienColorNames[alienIndex % alienColorNames.length];
+                return `${colorName.toUpperCase()}_ALIEN_${direction}`;
+            }
+            return move;
+        }
+        
+        function testAllLevels() {
+            console.log('='.repeat(60));
+            console.log('TESTING ALL LEVELS FOR SOLVABILITY');
+            console.log('='.repeat(60));
+            
+            const results = [];
+            
+            LEVELS.forEach((level, index) => {
+                console.log(`\nTesting Level ${index + 1}: ${level.name} (${level.size}x${level.size})`);
+                const result = isLevelSolvable(level);
+                
+                results.push({
+                    id: level.id,
+                    name: level.name,
+                    size: level.size,
+                    ...result
+                });
+                
+                if (result.solvable) {
+                    console.log(`✅ SOLVABLE - Min moves: ${result.minMoves}, Iterations: ${result.iterations}`);
+                    const formattedMoves = result.moves.slice(0, 10).map(formatSolutionMove);
+                    console.log(`   Solution: ${formattedMoves.join(' → ')}${result.moves.length > 10 ? '...' : ''}`);
+                } else {
+                    console.log(`❌ UNSOLVABLE - ${result.reason}`);
+                }
+            });
+            
+            console.log('\n' + '='.repeat(60));
+            console.log('SUMMARY');
+            console.log('='.repeat(60));
+            
+            const solvable = results.filter(r => r.solvable);
+            const unsolvable = results.filter(r => !r.solvable);
+            
+            console.log(`Total Levels: ${results.length}`);
+            console.log(`Solvable: ${solvable.length} ✅`);
+            console.log(`Unsolvable: ${unsolvable.length} ❌`);
+            
+            if (unsolvable.length > 0) {
+                console.log('\nUNSOLVABLE LEVELS:');
+                unsolvable.forEach(r => {
+                    console.log(`  - Level ${r.id + 1}: ${r.name} - ${r.reason}`);
+                });
+            }
+            
+            console.log('\n' + '='.repeat(60));
+            
+            return results;
+        }
+        
+        // ============================================
+        // UI FUNCTIONS
+        // ============================================
+        function showMenu() {
+            hideAllScreens();
+            document.getElementById('menu-screen').classList.add('active');
+        }
+        
+        function showLevelSelect() {
+            hideAllScreens();
+            document.getElementById('level-select-screen').classList.add('active');
+            renderLevelGrid();
+        }
+        
+        function showGame() {
+            hideAllScreens();
+            document.getElementById('game-screen').classList.add('active');
+        }
+        
+        function showWinScreen() {
+            const level = LEVELS[gameState.currentLevel];
+            const stars = gameState.completeLevel();
+            
+            document.getElementById('win-level-name').textContent = level.name;
+            document.getElementById('win-moves').textContent = gameState.moves;
+            
+            const starsContainer = document.getElementById('win-stars');
+            starsContainer.innerHTML = '';
+            for (let i = 1; i <= 3; i++) {
+                const star = document.createElement('span');
+                star.textContent = '⭐';
+                star.className = i <= stars ? 'text-yellow-400 animate-bounce' : 'text-gray-600';
+                star.style.animationDelay = `${i * 0.1}s`;
+                starsContainer.appendChild(star);
+            }
+            
+            const nextBtn = document.getElementById('next-level-btn');
+            if (gameState.currentLevel < LEVELS.length - 1) {
+                nextBtn.style.display = 'block';
+            } else {
+                nextBtn.style.display = 'none';
+            }
+            
+            document.getElementById('win-screen').classList.add('active');
+        }
+        
+        function showLoseScreen() {
+            const level = LEVELS[gameState.currentLevel];
+            document.getElementById('lose-level-name').textContent = level.name;
+            document.getElementById('lose-moves').textContent = gameState.moves;
+            document.getElementById('lose-screen').classList.add('active');
+        }
+        
+        function hideAllScreens() {
+            document.querySelectorAll('.screen').forEach(screen => {
+                screen.classList.remove('active');
+            });
+        }
+        
+        function renderLevelGrid() {
+            const grid = document.getElementById('level-grid');
+            grid.innerHTML = '';
+            
+            LEVELS.forEach((level, index) => {
+                const isCompleted = gameState.completedLevels.includes(index);
+                const isLocked = index > 0 && !gameState.completedLevels.includes(index - 1);
+                const stars = gameState.levelStars[index] || 0;
+                
+                const button = document.createElement('button');
+                button.className = `glass p-6 rounded-lg transition-all ${
+                    isLocked ? 'opacity-50 cursor-not-allowed' : 'hover:bg-white/10 hover:scale-105 glow'
+                }`;
+                button.disabled = isLocked;
+                button.onclick = () => !isLocked && startLevel(index);
+                
+                button.innerHTML = `
+                    <div class="text-center">
+                        <div class="text-3xl font-bold text-white mb-2">${isLocked ? '🔒' : index + 1}</div>
+                        <div class="text-sm text-gray-300 mb-1">${level.name}</div>
+                        <div class="text-xs text-gray-400">${level.size}x${level.size}</div>
+                        ${isCompleted ? `
+                            <div class="flex justify-center gap-1 mt-2">
+                                ${[1, 2, 3].map(s => `<span class="text-lg ${s <= stars ? 'text-yellow-400' : 'text-gray-600'}">⭐</span>`).join('')}
+                            </div>
+                        ` : ''}
+                    </div>
+                `;
+                
+                grid.appendChild(button);
+            });
+        }
+        
+        function startLevel(levelIndex) {
+            gameState.loadLevel(levelIndex);
+            clearBoard();
+            createBoard();
+            showGame();
+        }
+        
+        function clearBoard() {
+            // Deselect any selected tile
+            deselectTile();
+            
+            if (board) board.clear();
+            if (astronaut) astronaut.remove();
+            if (earth) earth.remove();
+            aliens.forEach(alien => alien.remove());
+            aliens = [];
+            if (directionArrows) {
+                directionArrows.remove();
+                directionArrows = null;
+            }
+        }
+        
+        function createBoard() {
+            const level = LEVELS[gameState.currentLevel];
+            board = new Board(level.size);
+            
+            earth = new Earth(gameState.earthPos);
+            
+            gameState.alienPositions.forEach((pos, index) => {
+                const alien = new Alien(pos, index);
+                aliens.push(alien);
+            });
+            
+            astronaut = new Astronaut(gameState.astronautPos);
+            
+            // Create directional arrows
+            directionArrows = new DirectionalArrows();
+        }
+        
+        function nextLevel() {
+            if (gameState.currentLevel < LEVELS.length - 1) {
+                startLevel(gameState.currentLevel + 1);
+                hideAllScreens();
+                document.getElementById('game-screen').classList.add('active');
+            } else {
+                showLevelSelect();
+            }
+        }
+        
+        function retryLevel() {
+            startLevel(gameState.currentLevel);
+            hideAllScreens();
+            document.getElementById('game-screen').classList.add('active');
+        }
+        
+        function undoMove() {
+            // Simplified undo - just reset level
+            retryLevel();
+        }
+        
+        function resetLevel() {
+            retryLevel();
+        }
+        
+        function resetProgress() {
+            if (confirm('Are you sure you want to reset all progress?')) {
+                localStorage.removeItem('completedLevels');
+                localStorage.removeItem('levelStars');
+                gameState.completedLevels = [];
+                gameState.levelStars = {};
+                showMenu();
+            }
+        }
+        
+        // ============================================
+        // AUDIO SYSTEM
+        // ============================================
+        let audioContext = null;
+        let isMuted = false;
+        
+        function getAudioContext() {
+            if (!audioContext) {
+                audioContext = new (window.AudioContext || window.webkitAudioContext)();
+            }
+            return audioContext;
+        }
+        
+        function playBeep(frequency, duration, type = 'sine') {
+            if (isMuted) return;
+            try {
+                const ctx = getAudioContext();
+                const oscillator = ctx.createOscillator();
+                const gainNode = ctx.createGain();
+                
+                oscillator.connect(gainNode);
+                gainNode.connect(ctx.destination);
+                
+                oscillator.frequency.value = frequency;
+                oscillator.type = type;
+                
+                gainNode.gain.setValueAtTime(0.3, ctx.currentTime);
+                gainNode.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + duration);
+                
+                oscillator.start(ctx.currentTime);
+                oscillator.stop(ctx.currentTime + duration);
+            } catch (error) {
+                console.warn('Audio playback failed:', error);
+            }
+        }
+        
+        function playSound(soundName) {
+            switch (soundName) {
+                case 'move':
+                    playBeep(440, 0.1, 'sine');
+                    break;
+                case 'collision':
+                    playBeep(220, 0.15, 'square');
+                    break;
+                case 'fall':
+                    playBeep(880, 0.3, 'sawtooth');
+                    setTimeout(() => playBeep(440, 0.3, 'sawtooth'), 100);
+                    setTimeout(() => playBeep(220, 0.3, 'sawtooth'), 200);
+                    break;
+                case 'win':
+                    playBeep(523, 0.2, 'sine');
+                    setTimeout(() => playBeep(659, 0.2, 'sine'), 150);
+                    setTimeout(() => playBeep(784, 0.4, 'sine'), 300);
+                    break;
+                case 'lose':
+                    playBeep(392, 0.3, 'triangle');
+                    setTimeout(() => playBeep(330, 0.5, 'triangle'), 200);
+                    break;
+                case 'click':
+                    playBeep(800, 0.05, 'sine');
+                    break;
+                case 'select':
+                    playBeep(600, 0.08, 'sine');
+                    break;
+            }
+        }
+        
+        // ============================================
+        // KEYBOARD CONTROLS
+        // ============================================
+        // (Keyboard handler is defined later with selection support)
+        
+        // ============================================
+        // MOUSE/TOUCH CONTROLS
+        // ============================================
+        const raycaster = new THREE.Raycaster();
+        raycaster.params.Points.threshold = 0.5;
+        raycaster.params.Line.threshold = 0.5;
+        const mouse = new THREE.Vector2();
+        
+        function handleTileClick(event) {
+            const gameScreen = document.getElementById('game-screen');
+            
+            if (!gameScreen || !gameScreen.classList.contains('active')) {
+                return;
+            }
+            
+            // Get mouse position
+            const rect = renderer.domElement.getBoundingClientRect();
+            mouse.x = ((event.clientX - rect.left) / rect.width) * 2 - 1;
+            mouse.y = -((event.clientY - rect.top) / rect.height) * 2 + 1;
+            
+            raycaster.setFromCamera(mouse, camera);
+            
+            // Collect all clickable objects
+            const clickableObjects = [];
+            
+            if (astronaut) {
+                clickableObjects.push({ type: 'astronaut', group: astronaut.group, index: null });
+            }
+            
+            aliens.forEach((alien, index) => {
+                if (alien && alien.group) {
+                    clickableObjects.push({ type: 'alien', group: alien.group, index });
+                }
+            });
+            
+            // Check intersections with all objects
+            for (const obj of clickableObjects) {
+                const intersects = raycaster.intersectObject(obj.group, true);
+                if (intersects.length > 0) {
+                    selectTile(obj.type, obj.index);
+                    return;
+                }
+            }
+            
+            // Deselect if clicking empty space
+            deselectTile();
+        }
+        
+        function selectTile(type, index = null) {
+            // Deselect previous
+            deselectTile();
+            
+            // Select new
+            gameState.selectedTile = { type, index };
+            
+            if (type === 'astronaut' && astronaut) {
+                astronaut.setSelected(true);
+            } else if (type === 'alien' && index !== null && aliens[index]) {
+                aliens[index].setSelected(true);
+            }
+            
+            playSound('select');
+        }
+        
+        function deselectTile() {
+            if (gameState.selectedTile) {
+                if (gameState.selectedTile.type === 'astronaut' && astronaut) {
+                    astronaut.setSelected(false);
+                } else if (gameState.selectedTile.type === 'alien' && aliens[gameState.selectedTile.index]) {
+                    aliens[gameState.selectedTile.index].setSelected(false);
+                }
+                gameState.selectedTile = null;
+            }
+        }
+        
+        function moveSelectedTile(direction) {
+            if (!gameState.selectedTile) return;
+            
+            if (gameState.selectedTile.type === 'astronaut') {
+                moveAstronaut(direction);
+            } else if (gameState.selectedTile.type === 'alien') {
+                moveAlien(gameState.selectedTile.index, direction);
+            }
+        }
+        
+        function moveAlien(alienIndex, direction) {
+            if (!aliens[alienIndex] || !board) return;
+            
+            const level = LEVELS[gameState.currentLevel];
+            const currentPos = gameState.alienPositions[alienIndex];
+            
+            // Get all obstacles (astronaut + other aliens)
+            const obstacles = [
+                gameState.astronautPos,
+                ...gameState.alienPositions.filter((_, idx) => idx !== alienIndex)
+            ];
+            
+            const { finalPos, path, fell } = findStoppingPosition(
+                currentPos,
+                direction,
+                level.size,
+                obstacles
+            );
+            
+            if (fell) {
+                playSound('fall');
+                aliens[alienIndex].fall();
+                gameState.alienPositions.splice(alienIndex, 1);
+                aliens.splice(alienIndex, 1);
+                gameState.selectedTile = null;
+                gameState.incrementMoves();
+            } else if (finalPos && (finalPos.x !== currentPos.x || finalPos.y !== currentPos.y)) {
+                playSound('move');
+                gameState.alienPositions[alienIndex] = finalPos;
+                aliens[alienIndex].gridPos = { ...finalPos };
+                aliens[alienIndex].updatePosition();
+                gameState.incrementMoves();
+            }
+        }
+        
+        // Update keyboard controls to work with selected tile
+        document.addEventListener('keydown', (e) => {
+            if (document.getElementById('game-screen').classList.contains('active')) {
+                // Movement keys
+                let direction = null;
+                switch (e.code) {
+                    case 'ArrowUp':
+                    case 'KeyW':
+                        e.preventDefault();
+                        direction = DIRECTIONS.UP;
+                        break;
+                    case 'ArrowDown':
+                    case 'KeyS':
+                        e.preventDefault();
+                        direction = DIRECTIONS.DOWN;
+                        break;
+                    case 'ArrowLeft':
+                    case 'KeyA':
+                        e.preventDefault();
+                        direction = DIRECTIONS.LEFT;
+                        break;
+                    case 'ArrowRight':
+                    case 'KeyD':
+                        e.preventDefault();
+                        direction = DIRECTIONS.RIGHT;
+                        break;
+                }
+                
+                if (direction) {
+                    // Convert to camera-relative direction
+                    const worldDirection = getCameraRelativeDirection(direction);
+                    
+                    if (gameState.selectedTile) {
+                        moveSelectedTile(worldDirection);
+                    } else {
+                        // Default to moving astronaut if nothing selected
+                        moveAstronaut(worldDirection);
+                    }
+                }
+                
+                // Other controls
+                switch (e.code) {
+                    case 'KeyU':
+                    case 'KeyZ':
+                        e.preventDefault();
+                        undoMove();
+                        break;
+                    case 'KeyR':
+                        e.preventDefault();
+                        resetLevel();
+                        break;
+                    case 'Escape':
+                        e.preventDefault();
+                        deselectTile();
+                        break;
+                }
+            }
+        }, true); // Use capture to override previous listener
+        
+        // ============================================
+        // ANIMATION LOOP
+        // ============================================
+        let lastTime = 0;
+        
+        function animate(time) {
+            requestAnimationFrame(animate);
+            
+            const deltaTime = (time - lastTime) / 1000;
+            lastTime = time;
+            
+            // Update stars
+            if (stars) {
+                stars.rotation.y += 0.0001;
+            }
+            
+            // Update shooting stars
+            updateShootingStars(deltaTime);
+            
+            // Update game objects
+            if (astronaut && !astronaut.falling) {
+                astronaut.update(deltaTime);
+            }
+            
+            aliens.forEach(alien => {
+                if (!alien.falling) {
+                    alien.update(deltaTime);
+                }
+            });
+            
+            if (earth) {
+                earth.update(deltaTime);
+            }
+            
+            // Update directional arrows for selected tile
+            if (directionArrows && gameState) {
+                let selectedPos = null;
+                let obstacles = [];
+                
+                if (gameState.selectedTile) {
+                    if (gameState.selectedTile.type === 'astronaut' && gameState.astronautPos) {
+                        selectedPos = gameState.astronautPos;
+                        obstacles = gameState.alienPositions || [];
+                    } else if (gameState.selectedTile.type === 'alien' && gameState.selectedTile.index !== null) {
+                        const alienPos = gameState.alienPositions[gameState.selectedTile.index];
+                        if (alienPos) {
+                            selectedPos = alienPos;
+                            obstacles = [
+                                gameState.astronautPos,
+                                ...gameState.alienPositions.filter((_, idx) => idx !== gameState.selectedTile.index)
+                            ].filter(pos => pos); // Remove any undefined positions
+                        }
+                    }
+                } else if (gameState.astronautPos) {
+                    // Default to astronaut if nothing selected
+                    selectedPos = gameState.astronautPos;
+                    obstacles = gameState.alienPositions || [];
+                }
+                
+                if (selectedPos && LEVELS[gameState.currentLevel]) {
+                    directionArrows.update(
+                        selectedPos,
+                        LEVELS[gameState.currentLevel].size,
+                        obstacles
+                    );
+                    directionArrows.animate(time / 1000);
+                } else if (directionArrows.hide) {
+                    directionArrows.hide();
+                }
+            }
+            
+            controls.update();
+            composer.render();
+        }
+        
+        // ============================================
+        // INITIALIZATION
+        // ============================================
+        
+        // Make functions global immediately so onclick handlers work
+        window.showMenu = showMenu;
+        window.showLevelSelect = showLevelSelect;
+        window.startLevel = startLevel;
+        window.nextLevel = nextLevel;
+        window.retryLevel = retryLevel;
+        window.undoMove = undoMove;
+        window.resetLevel = resetLevel;
+        window.resetProgress = resetProgress;
+        window.toggleMusic = toggleMusic;
+        window.getHint = getHint;
+        window.testAllLevels = testAllLevels;
+        
+        // Toggle instructions on main menu
+        let instructionsVisible = false;
+        window.toggleInstructions = function() {
+            instructionsVisible = !instructionsVisible;
+            const content = document.getElementById('instructions-content');
+            const arrow = document.getElementById('instructions-arrow');
+            
+            if (instructionsVisible) {
+                content.style.display = 'block';
+                arrow.style.transform = 'rotate(0deg)';
+                arrow.textContent = '▼';
+            } else {
+                content.style.display = 'none';
+                arrow.style.transform = 'rotate(-90deg)';
+                arrow.textContent = '▶';
+            }
+        };
+        
+        // Debug functions
+        window.testAlienSelection = function() {
+            console.log('Testing alien selection...');
+            console.log('Aliens array:', aliens);
+            console.log('Number of aliens:', aliens.length);
+            console.log('selectTile function exists:', typeof selectTile);
+            if (aliens.length > 0) {
+                console.log('Attempting to select alien 0...');
+                try {
+                    selectTile('alien', 0);
+                    console.log('selectTile call completed');
+                } catch (error) {
+                    console.error('Error calling selectTile:', error);
+                }
+            } else {
+                console.log('No aliens found!');
+            }
+        };
+        
+        window.debugGameState = function() {
+            console.log('Game State:', gameState);
+            console.log('Astronaut:', astronaut);
+            console.log('Aliens:', aliens);
+            console.log('Renderer:', renderer);
+            console.log('Scene children:', scene?.children.length);
+        };
+        
+        // Initialize Three.js when page loads
+        window.addEventListener('load', () => {
+            initThree();
+            animate(0);
+            
+            // Initialize background music (but don't auto-play)
+            initBackgroundMusic();
+            
+            // Add click/touch listeners to canvas AFTER renderer is created
+            if (renderer && renderer.domElement) {
+                renderer.domElement.addEventListener('click', handleTileClick, false);
+                
+                renderer.domElement.addEventListener('touchend', (e) => {
+                    e.preventDefault();
+                    if (e.changedTouches.length > 0) {
+                        const touch = e.changedTouches[0];
+                        handleTileClick(touch);
+                    }
+                });
+            }
+        });
+        
+        // ============================================
+        // HINT SYSTEM
+        // ============================================
+        function getHint() {
+            // Check if user has coins and hasn't used max hints
+            if (gameState.coins === 0) {
+                alert('❌ No coins available! Complete levels to earn coins.');
+                return;
+            }
+            
+            if (gameState.hintsUsed >= gameState.maxHintsPerLevel) {
+                alert('❌ Maximum 3 hints per level!');
+                return;
+            }
+            
+            // Deduct coin
+            gameState.coins--;
+            gameState.hintsUsed++;
+            localStorage.setItem('coins', gameState.coins.toString());
+            gameState.updateUI();
+            
+            // Get solution from BFS solver
+            const level = LEVELS[gameState.currentLevel];
+            const currentState = {
+                astronautPos: gameState.astronautPos,
+                alienPositions: gameState.alienPositions,
+                earthPos: level.earthPos,
+                size: level.size
+            };
+            
+            const solution = isLevelSolvable(level);
+            
+            if (!solution.solvable) {
+                document.getElementById('hint-text').textContent = '🤔 This level seems unsolvable from current state. Try resetting!';
+                document.getElementById('hint-display').classList.remove('hidden');
+                setTimeout(() => {
+                    document.getElementById('hint-display').classList.add('hidden');
+                }, 5000);
+                return;
+            }
+            
+            // Get the first move from solution
+            const nextMove = solution.moves[gameState.moves] || solution.moves[0];
+            
+            if (!nextMove) {
+                document.getElementById('hint-text').textContent = '✅ You\'re very close! Keep trying!';
+                document.getElementById('hint-display').classList.remove('hidden');
+                setTimeout(() => {
+                    document.getElementById('hint-display').classList.add('hidden');
+                }, 5000);
+                return;
+            }
+            
+            // Parse the move (e.g., "ASTRONAUT_UP" or "ALIEN0_LEFT")
+            const parts = nextMove.split('_');
+            const tileType = parts[0];
+            const direction = parts[1];
+            
+            let hintText = '';
+            if (tileType === 'ASTRONAUT') {
+                hintText = `💡 Move the 👨‍🚀 Astronaut ${direction.toLowerCase()}`;
+            } else if (tileType.startsWith('ALIEN')) {
+                const alienIndex = parseInt(tileType.replace('ALIEN', ''));
+                const alienColors = ['blue', 'purple', 'green', 'orange'];
+                const colorName = alienColors[alienIndex % alienColors.length];
+                hintText = `💡 Move the ${colorName} 👽 Alien ${direction.toLowerCase()}`;
+            }
+            
+            document.getElementById('hint-text').textContent = hintText;
+            document.getElementById('hint-display').classList.remove('hidden');
+            
+            // Hide hint after 8 seconds
+            setTimeout(() => {
+                document.getElementById('hint-display').classList.add('hidden');
+            }, 8000);
+            
+            playSound('select');
+        }
+        
+        // ============================================
+        // DIRECTIONAL ARROWS
+        // ============================================
+        let directionArrows = null;
+        
+        class DirectionalArrows {
+            constructor() {
+                this.group = new THREE.Group();
+                this.arrows = {};
+                this.createArrows();
+                scene.add(this.group);
+            }
+            
+            createArrows() {
+                const arrowDistance = 1.5;
+                const arrowSize = 0.4;
+                
+                // Create arrow for each direction
+                const directions = [
+                    { name: 'up', dir: DIRECTIONS.UP, pos: [0, 0, -arrowDistance], rot: 0 },
+                    { name: 'down', dir: DIRECTIONS.DOWN, pos: [0, 0, arrowDistance], rot: Math.PI },
+                    { name: 'left', dir: DIRECTIONS.LEFT, pos: [-arrowDistance, 0, 0], rot: -Math.PI / 2 },
+                    { name: 'right', dir: DIRECTIONS.RIGHT, pos: [arrowDistance, 0, 0], rot: Math.PI / 2 }
+                ];
+                
+                directions.forEach(({ name, dir, pos, rot }) => {
+                    const arrowGroup = new THREE.Group();
+                    
+                    // Arrow cone
+                    const coneGeometry = new THREE.ConeGeometry(arrowSize, arrowSize * 1.5, 8);
+                    const material = new THREE.MeshStandardMaterial({
+                        color: 0x888888,
+                        emissive: 0x444444,
+                        emissiveIntensity: 0.5,
+                        transparent: true,
+                        opacity: 0.8
+                    });
+                    
+                    const cone = new THREE.Mesh(coneGeometry, material);
+                    cone.rotation.x = Math.PI / 2;
+                    cone.rotation.z = rot;
+                    arrowGroup.add(cone);
+                    
+                    arrowGroup.position.set(...pos);
+                    arrowGroup.position.y = 1.2;
+                    arrowGroup.visible = false;
+                    
+                    this.arrows[name] = {
+                        group: arrowGroup,
+                        direction: dir,
+                        material: material,
+                        baseY: 1.2
+                    };
+                    
+                    this.group.add(arrowGroup);
+                });
+            }
+            
+            update(astronautPos, boardSize, obstacles) {
+                if (!astronautPos || !board) {
+                    this.hide();
+                    return;
+                }
+                
+                // Position arrows around astronaut
+                const worldPos = board.getWorldPosition(astronautPos.x, astronautPos.y);
+                this.group.position.set(worldPos.x, 0, worldPos.z);
+                
+                // Update each arrow
+                Object.entries(this.arrows).forEach(([name, arrow]) => {
+                    const { finalPos, fell } = findStoppingPosition(
+                        astronautPos,
+                        arrow.direction,
+                        boardSize,
+                        obstacles
+                    );
+                    
+                    arrow.group.visible = true;
+                    
+                    if (fell) {
+                        // Red for dangerous moves
+                        arrow.material.color.setHex(0xff4444);
+                        arrow.material.emissive.setHex(0x880000);
+                    } else if (finalPos && (finalPos.x !== astronautPos.x || finalPos.y !== astronautPos.y)) {
+                        // Green for safe moves
+                        arrow.material.color.setHex(0x44ff44);
+                        arrow.material.emissive.setHex(0x008800);
+                    } else {
+                        // Gray for no movement
+                        arrow.material.color.setHex(0x666666);
+                        arrow.material.emissive.setHex(0x333333);
+                    }
+                });
+            }
+            
+            animate(time) {
+                Object.values(this.arrows).forEach(arrow => {
+                    if (arrow.group.visible) {
+                        arrow.group.position.y = arrow.baseY + Math.sin(time * 3) * 0.1;
+                    }
+                });
+            }
+            
+            hide() {
+                Object.values(this.arrows).forEach(arrow => {
+                    arrow.group.visible = false;
+                });
+            }
+            
+            remove() {
+                scene.remove(this.group);
+            }
+        }
+        
+        // Auto-test disabled in production
+    </script>
+</body>
+</html>
