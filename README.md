@@ -1,13 +1,6 @@
 # 🚀 Space Puzzle - Astronaut's Journey to Earth
 
-A premium 3D web-based puzzle game built with vanilla JavaScript and Three.js where you guide an astronaut through space to reach Earth. Features stunning 3D graphics, 12 challenging levels, a coin & hint system, and full mobile/tablet support!
-
-## ⚡ Quick Start (No Installation Required!)
-
-1. **Double-click** `index.html`
-2. **Play!** The game opens in your browser immediately
-
-That's it! No Node.js, no npm, no installation needed.
+A 3D web-based puzzle game built with vanilla JavaScript and Three.js where you guide an astronaut through space to reach Earth.
 
 ## 🎮 Game Description
 
@@ -145,7 +138,7 @@ Works in all modern browsers:
 
 ```
 Puzzle Game/
-├── index.html              # The complete game - just open this!
+├── index.html              # The complete game
 ├── README.md              # This file
 └── VANILLA-QUICKSTART.txt # Quick reference guide
 ```
@@ -172,7 +165,7 @@ That's it! The entire game is in `index.html`.
 - ⭐⭐ 2 Stars: Complete in ≤10 moves
 - ⭐ 1 Star: Complete in >10 moves
 
-## � Customization
+## Customization
 
 Want to modify the game? Just edit `index.html`:
 
